@@ -1,8 +1,3 @@
-// stdafx.cpp : source file that includes just the standard includes
-// MyHook.pch will be the pre-compiled header
-// stdafx.obj will contain the pre-compiled type information
+// This file generates the precompiled headers (save time).
 
 #include "stdafx.h"
-
-// TODO: reference any additional headers you need in STDAFX.H
-// and not in this file

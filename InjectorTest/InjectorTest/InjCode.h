@@ -1,18 +1,25 @@
-/***************************************************************
-Module name: InjCode.h
-Copyright (c) 2003 Robert Kuster
+#include <psapi.h>
+#include <atlstr.h>
 
-Notice:	If this code works, it was written by Robert Kuster.
-		Else, I don't know who wrote it.
 
-		Use it on your own risk. No responsibilities for
-		possible damages of even functionality can be taken.
-***************************************************************/
-#if !defined INJCODE_H
+#ifndef INJCODE_H
 #define INJCODE_H
 
-int Inject (HANDLE hProcess);
+class Injector
+{
+private:
+	const char * HOOK_DLL_PATH;
+	HMODULE GetModuleHandleByName(HANDLE, const char *);
 
-#endif // !defined(INJCODE_H)
+public:
+	Injector(const char *);
+	int Inject(HANDLE);
+	void Detach(HANDLE, const char *);
+
+};
+
+
+#endif
+
 
 

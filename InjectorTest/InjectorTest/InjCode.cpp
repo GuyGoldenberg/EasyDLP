@@ -1,16 +1,18 @@
 #pragma region Includes
 #include "stdafx.h"
 #include "InjCode.h"
-#include <psapi.h>
-#include "atlstr.h"
 #pragma endregion
 
-#pragma region Constants
-const char szLibPath[] = "C:\\Windows\\MyDllHook.dll";
-#pragma endregion- 
+using namespace std;
+
+Injector::Injector(const char *DllPath)
+{
+	HOOK_DLL_PATH = (char *)malloc(strlen(DllPath) * sizeof(char));
+	strcpy((char *)HOOK_DLL_PATH, DllPath);
+}
 
 #pragma region Detach
-HMODULE GetModuleHandleByName(HANDLE hProcess, const char *modName)
+HMODULE Injector::GetModuleHandleByName(HANDLE hProcess, const char *modName)
 {
 	DWORD cbNeeded;
 	HMODULE hMods[1024];
@@ -33,7 +35,7 @@ HMODULE GetModuleHandleByName(HANDLE hProcess, const char *modName)
 
 }
 
-void Detach(HANDLE hProcess, char modulePath[])
+void Injector::Detach(HANDLE hProcess, const char *modulePath)
 {
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
 	HMODULE hModule = GetModuleHandleByName(hProcess, modulePath);
@@ -43,15 +45,15 @@ void Detach(HANDLE hProcess, char modulePath[])
 				(void*)hModule,
                  0, NULL );
 	
-	::WaitForSingleObject( hThread, INFINITE );
-	::CloseHandle( hThread );
+	WaitForSingleObject( hThread, INFINITE );
+	CloseHandle( hThread );
 
 
 }
 #pragma endregion
 
 #pragma region Inject
-int Inject( HANDLE hProcess )
+int Injector::Inject( HANDLE hProcess )
 {
 	HANDLE hThread;
 	
@@ -62,10 +64,10 @@ int Inject( HANDLE hProcess )
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
 
 	// Allocate memory for the dll path
-	pLibRemote = VirtualAllocEx( hProcess, NULL, sizeof(szLibPath), MEM_COMMIT, PAGE_READWRITE );
+	pLibRemote = VirtualAllocEx( hProcess, NULL, sizeof(HOOK_DLL_PATH), MEM_COMMIT, PAGE_READWRITE );
 	if( pLibRemote == NULL )
 		return false;
-	::WriteProcessMemory(hProcess, pLibRemote, (void*)szLibPath,sizeof(szLibPath),NULL);
+	WriteProcessMemory(hProcess, pLibRemote, (void*)HOOK_DLL_PATH,sizeof(HOOK_DLL_PATH),NULL);
 
 	// Load the DLL into the process
 	hThread = CreateRemoteThread( hProcess, NULL, 0,	
@@ -81,7 +83,7 @@ int Inject( HANDLE hProcess )
 	GetExitCodeThread( hThread, &hLibModule );
 
 	CloseHandle( hThread );
-	::VirtualFreeEx( hProcess, pLibRemote, sizeof(szLibPath), MEM_RELEASE );
+	::VirtualFreeEx( hProcess, pLibRemote, sizeof(HOOK_DLL_PATH), MEM_RELEASE );
 	if( hLibModule == NULL )
 		return false;
 
