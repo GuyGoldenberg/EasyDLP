@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Mhook">
+      <UniqueIdentifier>{8edd3668-d720-4716-9bed-4dc9ccd80a64}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -39,24 +42,12 @@
     <ClInclude Include="misc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TCP_Client.h">
+    <ClInclude Include="hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="cpu.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="disasm.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="disasm_x86.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="misc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DLL_hook_test.cpp">
@@ -65,10 +56,22 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mhook.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="cpu.c">
+      <Filter>Source Files\Mhook</Filter>
     </ClCompile>
-    <ClCompile Include="TCP_Client.cpp">
+    <ClCompile Include="disasm.c">
+      <Filter>Source Files\Mhook</Filter>
+    </ClCompile>
+    <ClCompile Include="disasm_x86.c">
+      <Filter>Source Files\Mhook</Filter>
+    </ClCompile>
+    <ClCompile Include="mhook.cpp">
+      <Filter>Source Files\Mhook</Filter>
+    </ClCompile>
+    <ClCompile Include="misc.c">
+      <Filter>Source Files\Mhook</Filter>
+    </ClCompile>
+    <ClCompile Include="hook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

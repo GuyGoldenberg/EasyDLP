@@ -1,23 +1,23 @@
-// stdafx.h : include file for standard system include files,
-// or project specific include files that are used frequently, but
-// are changed infrequently
-//
-
 #pragma once
 
 #include "targetver.h"
 
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files:
 #include <windows.h>
 #include <stdio.h>
 #include <shlwapi.h>
 #include <iostream>
-using namespace std;
-// Don't forget to include "Ws2_32.lib" in the library list.
-#include <winsock2.h> 
 #include <string.h>
 #include <iomanip>
 
 
-// TODO: reference additional headers your program requires here
+using namespace std;
+
+/// <summary>
+/// Encodes the specified WSTR to a desired encoding.
+/// </summary>
+/// <param name="wstr">whcar_t string</param>
+/// <param name="codePage">codePage represents the encoding type (CP_*)</param>
+/// <returns>Encoded string</returns>
+char* Encode(const wchar_t* wstr, unsigned int codePage);
+
