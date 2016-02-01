@@ -13,8 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Mhook">
+    <Filter Include="Source Files\HookLib">
       <UniqueIdentifier>{8edd3668-d720-4716-9bed-4dc9ccd80a64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\HookLib">
+      <UniqueIdentifier>{7ff0afaf-2350-427f-a5b6-c650df53ce86}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -24,26 +27,29 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cpu.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="disasm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="disasm_x86.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="disasm_x86_tables.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mhook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="misc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hook.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="file_validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\cpu.h">
+      <Filter>Header Files\HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\disasm.h">
+      <Filter>Header Files\HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\disasm_x86.h">
+      <Filter>Header Files\HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\disasm_x86_tables.h">
+      <Filter>Header Files\HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\mhook.h">
+      <Filter>Header Files\HookLib</Filter>
+    </ClInclude>
+    <ClInclude Include="HookLib\misc.h">
+      <Filter>Header Files\HookLib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -56,23 +62,26 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="cpu.c">
-      <Filter>Source Files\Mhook</Filter>
-    </ClCompile>
-    <ClCompile Include="disasm.c">
-      <Filter>Source Files\Mhook</Filter>
-    </ClCompile>
-    <ClCompile Include="disasm_x86.c">
-      <Filter>Source Files\Mhook</Filter>
-    </ClCompile>
-    <ClCompile Include="mhook.cpp">
-      <Filter>Source Files\Mhook</Filter>
-    </ClCompile>
-    <ClCompile Include="misc.c">
-      <Filter>Source Files\Mhook</Filter>
-    </ClCompile>
     <ClCompile Include="hook.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="file_validator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HookLib\cpu.c">
+      <Filter>Source Files\HookLib</Filter>
+    </ClCompile>
+    <ClCompile Include="HookLib\disasm.c">
+      <Filter>Source Files\HookLib</Filter>
+    </ClCompile>
+    <ClCompile Include="HookLib\disasm_x86.c">
+      <Filter>Source Files\HookLib</Filter>
+    </ClCompile>
+    <ClCompile Include="HookLib\mhook.cpp">
+      <Filter>Source Files\HookLib</Filter>
+    </ClCompile>
+    <ClCompile Include="HookLib\misc.c">
+      <Filter>Source Files\HookLib</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

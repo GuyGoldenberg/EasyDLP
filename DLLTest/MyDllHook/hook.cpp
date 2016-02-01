@@ -1,21 +1,23 @@
 #include "hook.h"
 #include "stdafx.h"
+#include "file_validator.h"
 
+Hook::Hook(){
 
-Hook::Hook(){};
+};
 
 _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L"kernel32"), "CreateFileW");
 
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
-	char file_path[1024];
-
-	strcpy(file_path, Encode(lpFileName, CP_UTF8)); //UTF-8 encoding
-	if (strstr(file_path, ".txt"))
+	string filePath;
+	fileValidator fValidator;
+	filePath = Encode(lpFileName, CP_UTF8); //UTF-8 encoding
+	if (fValidator.endsWith(filePath, ".txt"))
 	{
 		TCHAR szEXEPath[2048];
 		char applicationPath[2048];
-		char mes[2048];
+		string mes;
 		GetModuleFileName(NULL, szEXEPath, 2048);
 		int j;
 		for (j = 0; szEXEPath[j] != 0; j++)
@@ -23,11 +25,9 @@ HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPS
 			applicationPath[j] = szEXEPath[j];
 		}
 		applicationPath[j] = '\0';
-		strcpy(mes, "Try open file ");
-		strcat(mes, file_path);
-		strcat(mes, " by ");
-		strcat(mes, applicationPath);
-		MessageBoxA(NULL, mes, NULL, NULL);
+		mes = "Tried to open: \r\n" + filePath + "\r\n\r\nSource: \r\n" + applicationPath;
+		
+		MessageBoxA(GetActiveWindow(), mes.c_str(), "Confidential information policy override", 0x0 | MB_ICONSTOP | MB_TASKMODAL);
 		return INVALID_HANDLE_VALUE;
 	}
 	return Hook::TrueCreateFile(lpFileName, a, b, c, d, e, h);
@@ -36,7 +36,7 @@ HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPS
 
 
 
-BOOL Hook::setHook()
+bool Hook::setHook()
 {
 	BOOL hookResult = Mhook_SetHook((PVOID*)&this->TrueCreateFile, (PVOID)(Hook::SecuredCreateFile));
 	if (!hookResult)
@@ -47,7 +47,7 @@ BOOL Hook::setHook()
 	return hookResult;
 }
 
-BOOL Hook::unsetHook()
+bool Hook::unsetHook()
 {
 	BOOL unHookResult = Mhook_Unhook((PVOID*)&this->TrueCreateFile);
 	if (!unHookResult)

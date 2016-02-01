@@ -50,7 +50,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;MYDLLHOOK_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_USRDLL;MYDLLHOOK_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -77,25 +77,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="cpu.h" />
-    <ClInclude Include="disasm.h" />
-    <ClInclude Include="disasm_x86.h" />
-    <ClInclude Include="disasm_x86_tables.h" />
+    <ClInclude Include="file_validator.h" />
     <ClInclude Include="hook.h" />
-    <ClInclude Include="mhook.h" />
-    <ClInclude Include="misc.h" />
+    <ClInclude Include="HookLib\cpu.h" />
+    <ClInclude Include="HookLib\disasm.h" />
+    <ClInclude Include="HookLib\disasm_x86.h" />
+    <ClInclude Include="HookLib\disasm_x86_tables.h" />
+    <ClInclude Include="HookLib\mhook.h" />
+    <ClInclude Include="HookLib\misc.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="cpu.c" />
-    <ClCompile Include="disasm.c" />
-    <ClCompile Include="disasm_x86.c" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DLL_hook_test.cpp" />
+    <ClCompile Include="file_validator.cpp" />
     <ClCompile Include="hook.cpp" />
-    <ClCompile Include="mhook.cpp" />
-    <ClCompile Include="misc.c" />
+    <ClCompile Include="HookLib\cpu.c" />
+    <ClCompile Include="HookLib\disasm.c" />
+    <ClCompile Include="HookLib\disasm_x86.c" />
+    <ClCompile Include="HookLib\mhook.cpp" />
+    <ClCompile Include="HookLib\misc.c" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

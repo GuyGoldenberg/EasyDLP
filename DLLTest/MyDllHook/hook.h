@@ -2,7 +2,7 @@
 #define HOOK_H_SECURE
 
 #include "stdafx.h"
-#include "mhook.h"
+#include "HookLib/mhook.h"
 
 
 
@@ -43,14 +43,14 @@ class Hook
 		/// Sets the hook.
 		/// </summary>
 		/// <returns>Hook status (True/False)</returns>
-		BOOL setHook();
+		bool setHook();
 
 
 		/// <summary>
 		/// Unsets the hook.
 		/// </summary>
 		/// <returns>Un-Hook status (True/False)</returns>
-		BOOL unsetHook();
+		bool unsetHook();
 
 	
 
