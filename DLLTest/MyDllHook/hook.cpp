@@ -2,11 +2,13 @@
 #include "stdafx.h"
 #include "file_validator.h"
 
+
 Hook::Hook(){
 
 };
 
 _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L"kernel32"), "CreateFileW");
+
 
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
