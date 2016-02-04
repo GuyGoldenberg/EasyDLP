@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef HOOK_H_SECURE
 #define HOOK_H_SECURE
 

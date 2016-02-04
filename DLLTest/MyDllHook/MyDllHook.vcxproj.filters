@@ -30,9 +30,6 @@
     <ClInclude Include="hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="file_validator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="HookLib\cpu.h">
       <Filter>Header Files\HookLib</Filter>
     </ClInclude>
@@ -51,6 +48,12 @@
     <ClInclude Include="HookLib\misc.h">
       <Filter>Header Files\HookLib</Filter>
     </ClInclude>
+    <ClInclude Include="string_validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="file_validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -60,9 +63,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hook.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="file_validator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="HookLib\cpu.c">
@@ -79,6 +79,12 @@
     </ClCompile>
     <ClCompile Include="HookLib\misc.c">
       <Filter>Source Files\HookLib</Filter>
+    </ClCompile>
+    <ClCompile Include="string_validator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="file_validator.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

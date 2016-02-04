@@ -78,6 +78,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="file_validator.h" />
+    <ClInclude Include="string_validator.h" />
     <ClInclude Include="hook.h" />
     <ClInclude Include="HookLib\cpu.h" />
     <ClInclude Include="HookLib\disasm.h" />
@@ -91,6 +92,7 @@
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="file_validator.cpp" />
+    <ClCompile Include="string_validator.cpp" />
     <ClCompile Include="hook.cpp" />
     <ClCompile Include="HookLib\cpu.c" />
     <ClCompile Include="HookLib\disasm.c" />

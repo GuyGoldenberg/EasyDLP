@@ -1,6 +1,6 @@
 #include "hook.h"
 #include "stdafx.h"
-#include "file_validator.h"
+#include "string_validator.h"
 
 
 Hook::Hook(){
@@ -13,7 +13,7 @@ _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
 	string filePath;
-	fileValidator fValidator;
+	stringValidator fValidator;
 	filePath = Encode(lpFileName, CP_UTF8); //UTF-8 encoding
 	if (fValidator.endsWith(filePath, ".txt"))
 	{
