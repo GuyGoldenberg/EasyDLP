@@ -10,7 +10,7 @@ NETWORKLIB_API NetworkBase::NetworkBase(void)
 	return;
 }
 
-NETWORKLIB_API NetworkBase::NetworkBase(const string serverAddress, const unsigned int port)
+NETWORKLIB_API NetworkBase::NetworkBase(const string serverAddress, const char * port)
 {
 
 
@@ -37,14 +37,15 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::socketInit()
 
 }
 
-NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string serverAddress, const unsigned int port)
+NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string serverAddress, const char * port)
 {
 	struct addrinfo *results, *ptr;
 	int res;
-	char *portStr = (char *)malloc(5*sizeof(char)); // allocate 5 chars for the port (MAX: 65535)
+	/*char *portStr = (char *)malloc(5*sizeof(char)); // allocate 5 chars for the port (MAX: 65535)
 	portStr = (char *)to_string(port).c_str();
+	*/
 
-	res = getaddrinfo(serverAddress.c_str(), portStr, &(this->hints), &results);
+	res = getaddrinfo(serverAddress.c_str(), port, &(this->hints), &results);
 	if (res != 0)
 	{
 		this->logMessages(("Error while looking for destination IP: [" + to_string(res) + "]").c_str(), log_level::error);
@@ -81,5 +82,34 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string server
 		WSACleanup();
 		return return_code::connect_error;
 	}
+
+}
+
+NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const string data)
+{
+	int res = ::send(this->clientSocket, data.c_str(), data.length(), 0);
+	if (res == SOCKET_ERROR) {
+		this->logMessages("Failed to send data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
+		closesocket(this->clientSocket);
+		WSACleanup();
+		return return_code::send_error;
+	}
+}
+
+string* NetworkBase::recv(const int buf_size)
+{
+	char *buffer = (char *)malloc(sizeof(char)* buf_size);
+	int res = ::recv(this->clientSocket, buffer, buf_size, 0);
+	// if (res > 0) res is the bytes received.
+	// if (res == 0) connection is closed.
+	// if (res < 0) recv error
+
+	if (res < 0)
+	{
+		this->logMessages("Failed to receiving data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
+		return nullptr;
+	}
+	string* recv = new string(buffer, res);
+	return recv;
 
 }
