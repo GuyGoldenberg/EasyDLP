@@ -20,11 +20,11 @@ using namespace std;
 class NETWORKLIB_API NetworkBase {
 
 private:
-	SOCKET clientSocket;
+	SOCKET socket;
 	string serverAddress;
 	struct addrinfo hints;
 	int serverPort;
-	typedef enum class return_codes {wsastrartup_error, getaddrinfo_error, socket_create_error, connect_error, send_error } return_code;
+	typedef enum class return_codes { wsastrartup_error, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error } return_code;
 	typedef enum class log_levels {error, warning, info, debug } log_level;
 	void logMessages(const char *message, log_level level) { MessageBoxA(NULL, message, NULL, NULL); }; // TODO Create a logging module and implement here.
 	void logMessages(const string message, log_level level) { MessageBoxA(NULL, message.c_str(), NULL, NULL); }; // TODO Create a logging module and implement here.
@@ -32,12 +32,16 @@ private:
 public:
 	NetworkBase(void);
 	NetworkBase(const string serverAddress, const char * port);
+	NetworkBase(SOCKET &sock);
 	return_code socketInit();
 	return_code connect(const string serverAddress, const char * port);
 	return_code send(const string data);
+	return_code send(SOCKET clientSocket, const string data);
+	return_code bind(const char * port);
+	return_code listen(int backlog);
+	NetworkBase accept();
 	string* recv(const int buf_size);
-	//int send(char * message, int messageSize);
-	//int recv(char * buffer, int bufSize);
+
 };
 
 
