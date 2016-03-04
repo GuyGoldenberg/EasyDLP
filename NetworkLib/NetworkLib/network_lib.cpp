@@ -10,15 +10,6 @@ NETWORKLIB_API NetworkBase::NetworkBase(void)
 	return;
 }
 
-NETWORKLIB_API NetworkBase::NetworkBase(const string serverAddress, const char * port)
-{
-
-
-	this->socket = INVALID_SOCKET;
-	this->connect(serverAddress, port);
-	return;
-}
-
 NETWORKLIB_API NetworkBase::NetworkBase(SOCKET &sock)
 {
 
@@ -114,8 +105,9 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, c
 	}
 }
 
-string* NetworkBase::recv(const int buf_size)
+string NetworkBase::recv(const int buf_size)
 {
+	MessageBoxA(NULL, "STARTING", NULL, NULL);
 	char *buffer = (char *)malloc(sizeof(char)* buf_size);
 	int res = ::recv(this->socket, buffer, buf_size, 0);
 	// if (res > 0) res is the bytes received.
@@ -127,8 +119,8 @@ string* NetworkBase::recv(const int buf_size)
 		this->logMessages("Failed to receiving data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
 		return nullptr;
 	}
-	string* recv = new string(buffer, res);
-	return recv;
+	
+	return string(buffer,res);
 
 }
 
@@ -179,7 +171,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::listen(int backlog)
 
 }
 
-NetworkBase NETWORKLIB_API NetworkBase::accept()
+NetworkBase* NetworkBase::accept()
 {
 
 	SOCKET clientSocket = ::accept(this->socket, NULL, NULL);
@@ -188,7 +180,7 @@ NetworkBase NETWORKLIB_API NetworkBase::accept()
 		this->logMessages(((string)"Error accepting client: " + to_string(WSAGetLastError())).c_str(), log_level::error);
 		closesocket(clientSocket);
 		WSACleanup();
+		return nullptr;
 	}
-	return NetworkBase(clientSocket);
-
+	return new NetworkBase(clientSocket);
 }
