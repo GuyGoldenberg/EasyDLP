@@ -39,9 +39,6 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string server
 {
 	struct addrinfo *results, *ptr;
 	int res;
-	/*char *portStr = (char *)malloc(5*sizeof(char)); // allocate 5 chars for the port (MAX: 65535)
-	portStr = (char *)to_string(port).c_str();
-	*/
 
 	res = getaddrinfo(serverAddress.c_str(), port, &(this->hints), &results);
 	if (res != 0)
@@ -107,7 +104,6 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, c
 
 string NetworkBase::recv(const int buf_size)
 {
-	MessageBoxA(NULL, "STARTING", NULL, NULL);
 	char *buffer = (char *)malloc(sizeof(char)* buf_size);
 	int res = ::recv(this->socket, buffer, buf_size, 0);
 	// if (res > 0) res is the bytes received.
@@ -119,9 +115,9 @@ string NetworkBase::recv(const int buf_size)
 		this->logMessages("Failed to receiving data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
 		return nullptr;
 	}
-	
+	if (res == 0) return "ended";
+	if (buffer == 0) return "DDD";
 	return string(buffer,res);
-
 }
 
 NetworkBase::return_code NETWORKLIB_API NetworkBase::bind(const char* port)
@@ -153,6 +149,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::bind(const char* port)
 		return return_code::bind_error;
 	}
 	freeaddrinfo(results);
+	return return_code::success;
 	
 }
 

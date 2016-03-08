@@ -24,12 +24,12 @@ private:
 	string serverAddress;
 	struct addrinfo hints;
 	int serverPort;
-	typedef enum return_codes { wsastrartup_error, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error } return_code;
 	typedef enum log_levels {error, warning, info, debug } log_level;
 	void logMessages(const char *message, log_level level) { MessageBoxA(NULL, message, NULL, NULL); }; // TODO Create a logging module and implement here.
 	void logMessages(const string message, log_level level) { MessageBoxA(NULL, message.c_str(), NULL, NULL); }; // TODO Create a logging module and implement here.
 
 public:
+	typedef enum return_codes { success = 0, wsastrartup_error = 1, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error, nullptr_error } return_code;
 	NetworkBase(void);
 	NetworkBase(SOCKET &sock);
 	return_code socketInit();
@@ -55,16 +55,20 @@ extern "C"{
 
 	NETWORKLIB_API return_code net_connect(NetworkBase* netBase, char* ip, char* port)
 	{
+		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
+
 		return netBase->connect(ip, port);
 	}
 
 	NETWORKLIB_API return_code net_send(NetworkBase* netBase, char* data)
 	{
+		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
 		return netBase->send(data);
 	}
 	
-	NETWORKLIB_API char* net_recv(NetworkBase* netBase, unsigned short buf_size)
+	NETWORKLIB_API char* net_recv(NetworkBase* netBase, int buf_size)
 	{
+		if (netBase == nullptr || netBase == 0) return nullptr;
 		return _strdup(netBase->recv(buf_size).c_str());
 	}
 	
@@ -72,16 +76,19 @@ extern "C"{
 
 	NETWORKLIB_API return_code net_bind(NetworkBase* netBase, const char * port)
 	{
+		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
 		return netBase->bind(port);
 	}
 
 	NETWORKLIB_API return_code net_listen(NetworkBase* netBase, int backlog)
 	{
+		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
 		return netBase->listen(backlog);
 	}
 
 	NETWORKLIB_API NetworkBase* net_accept(NetworkBase* netBase)
 	{
+		if (netBase == nullptr || netBase == 0) return nullptr;
 		return netBase->accept();
 	}
 }
