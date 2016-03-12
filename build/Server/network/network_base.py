@@ -14,16 +14,19 @@ class NetworkError(Exception):
         self.name = name
 
     def __str__(self):
-        return repr("{} [{}]".format(self.name, self.id))
+        return str("{0} [{1}]".format(self.name, self.id))
 
 
 class NetworkBase:
-    def __init__(self):
+    def __init__(self, p_network_obj=None):
         self.network = ctypes.CDLL(DLL_PATH)
         self.__kill = False
-        self.p_network_obj = self.network.New_NetworkBase()
+        if p_network_obj is not None:
+            self.p_network_obj = p_network_obj
+        else:
+            self.p_network_obj = self.network.New_NetworkBase()
         return_codes_list = ["wsastrartup_error", "getaddrinfo_error", "socket_create_error", "connect_error",
-                             "send_error", "bind_:error", "listen_error", "accept_error", "nullptr_error"]
+                             "send_error", "bind_error", "listen_error", "accept_error", "nullptr_error", "settimeout_error"]
         self.return_codes = dict((id + 1, item) for id, item in enumerate(return_codes_list))
 
     def check_for_errors(self, return_code):
@@ -47,16 +50,15 @@ class NetworkBase:
     def connect(self, ip, port):
         ip = ctypes.cast(ip, ctypes.c_char_p)
         port = ctypes.c_char_p(str(port))
-        
         try:
             result = self.network.net_connect(self.p_network_obj, ip, port)
             self.check_for_errors(result)
         except NetworkError as e:
             LOGGER.error(self.format_error(STRINGS.s_connect_error, e))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
+            raise e
         return True
 
     def bind(self, port):
@@ -66,10 +68,10 @@ class NetworkBase:
             self.check_for_errors(result)
         except NetworkError as e:
             LOGGER.error(self.format_error(STRINGS.s_bind_error, e))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
+            raise e
         return True
 
     def listen(self, backlog):
@@ -79,10 +81,10 @@ class NetworkBase:
             self.check_for_errors(result)
         except NetworkError as e:
             LOGGER.error(self.format_error(STRINGS.s_listen_error, e))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
+            raise e
         return True
 
     def accept(self):
@@ -96,34 +98,34 @@ class NetworkBase:
                 LOGGER.error(self.format_error(STRINGS.s_accept_error, e))
             else:
                 LOGGER.error(STRINGS.s_nullptr.format(error_name="accept"))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
+            raise e
 
-        return result
+        return NetworkBase(p_network_obj=result)
 
     def recv(self, buffer_size, client=None):
         buffer_size = ctypes.c_int(buffer_size)
         result = None
         try:
             if client is None:
-                print self.p_network_obj
                 result = self.network.net_recv(self.p_network_obj, buffer_size)
             else:
                 result = self.network.net_recv(client, buffer_size)
             if result == 0:
-                raise NetworkError(-1, STRINGS.s_nullptr)
+                raise NetworkError(-1, STRINGS.s_nullptr.format(error_name="recv"))
         except NetworkError as e:
             if e.id != -1:
                 LOGGER.error(self.format_error(STRINGS.s_recv_error, e))
             else:
                 LOGGER.error(STRINGS.s_nullptr.format(error_name="recv"))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
-        return ctypes.cast(result, ctypes.c_char_p).value
+            raise e
+        if result > 0:
+            return ctypes.cast(result, ctypes.c_char_p).value
 
     def send(self, data, client=None):
         data = ctypes.cast(data, ctypes.c_char_p)
@@ -134,8 +136,22 @@ class NetworkBase:
                 result = self.network.net_send(client, data)
         except NetworkError as e:
             LOGGER.error(self.format_error(STRINGS.s_send_error, e))
-            raise
+            raise e
         except Exception as e:
             LOGGER.error(str(e))
-            raise
+            raise e
         return True
+
+    def settimeout(self, timeout):
+        timeout = ctypes.c_int(timeout)
+        try:
+            result = self.network.net_settimeout(self.p_network_obj, timeout)
+            self.check_for_errors(result)
+        except NetworkError as e:
+            LOGGER.error(self.format_error(STRINGS.s_settimeout_error, e))
+            raise e
+        except Exception as e:
+            LOGGER.error(str(e))
+            raise e
+
+

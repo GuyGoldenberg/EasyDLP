@@ -29,7 +29,7 @@ private:
 	void logMessages(const string message, log_level level) { MessageBoxA(NULL, message.c_str(), NULL, NULL); }; // TODO Create a logging module and implement here.
 
 public:
-	typedef enum return_codes { success = 0, wsastrartup_error = 1, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error, nullptr_error } return_code;
+	typedef enum return_codes { success = 0, wsastrartup_error = 1, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error, nullptr_error, settimeout_error } return_code;
 	NetworkBase(void);
 	NetworkBase(SOCKET &sock);
 	return_code socketInit();
@@ -40,9 +40,14 @@ public:
 	return_code listen(int backlog);
 	NetworkBase* accept();
 	string recv(const int buf_size);
+	void close();
+	void shutdown(int x);
+	return_code settimeout(int timeout);
 
 };
 
+
+#ifdef NETWORKLIB_EXPORTS
 extern "C"{
 
 	typedef int return_code;
@@ -69,7 +74,9 @@ extern "C"{
 	NETWORKLIB_API char* net_recv(NetworkBase* netBase, int buf_size)
 	{
 		if (netBase == nullptr || netBase == 0) return nullptr;
-		return _strdup(netBase->recv(buf_size).c_str());
+		string res = netBase->recv(buf_size).c_str();
+		if (res.compare("\0") == 0) return nullptr;
+		return _strdup(res.c_str());
 	}
 	
 
@@ -91,8 +98,26 @@ extern "C"{
 		if (netBase == nullptr || netBase == 0) return nullptr;
 		return netBase->accept();
 	}
+	NETWORKLIB_API return_code net_settimeout(NetworkBase* netBase, int timeout)
+	{
+		if (netBase == nullptr || netBase == 0) return NetworkBase::return_code::nullptr_error;
+		return netBase->settimeout(timeout);
+	}
+
+	NETWORKLIB_API void net_close(NetworkBase* netBase)
+	{
+		if (netBase == nullptr || netBase == 0) return;
+		netBase->close();
+		return;
+	}
+
+	NETWORKLIB_API void net_shutdown(NetworkBase* netBase, int x)
+	{
+		if (netBase == nullptr || netBase == 0) return;	
+		netBase->shutdown(x);
+		return;
+	}
+
+
 }
-
-
-
-
+#endif

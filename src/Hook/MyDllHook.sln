@@ -1,16 +1,21 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MyDllHook", "MyDllHook\MyDllHook.vcxproj", "{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
+		Rel-64|Win32 = Rel-64|Win32
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Debug|Win32.ActiveCfg = Debug|Win32
 		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Debug|Win32.Build.0 = Debug|Win32
+		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Rel-64|Win32.ActiveCfg = Rel-64|Win32
+		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Rel-64|Win32.Build.0 = Rel-64|Win32
 		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Release|Win32.ActiveCfg = Release|Win32
 		{84472AAE-07F7-4BD7-A7D1-E276E0C2DFC6}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection

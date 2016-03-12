@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "hook.h"
 
+
 char* Encode(const wchar_t* wstr, unsigned int codePage)
 {
 	int sizeNeeded = WideCharToMultiByte(codePage, 0, wstr, -1, NULL, 0, NULL, NULL);
@@ -16,14 +17,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
 					 )
 {
-	Hook hook;
+
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
-			hook.setHook();
+			::hook->setHook();
 			break;
 		case DLL_PROCESS_DETACH:
-			hook.unsetHook();
+			::hook->unsetHook();
 			break;
 	}
 	return TRUE;

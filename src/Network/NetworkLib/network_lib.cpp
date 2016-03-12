@@ -33,6 +33,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::socketInit()
 	this->hints.ai_socktype = SOCK_STREAM; // TCP
 	this->hints.ai_protocol = IPPROTO_TCP; // TCP
 	this->hints.ai_flags = AI_ALL;
+	return return_code::success;
 }
 
 NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string serverAddress, const char * port)
@@ -77,6 +78,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string server
 		WSACleanup();
 		return return_code::connect_error;
 	}
+	return return_code::success;
 
 }
 
@@ -89,17 +91,19 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const string data)
 		WSACleanup();
 		return return_code::send_error;
 	}
+	return return_code::success;
 }
 
 NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, const string data)
 {
-	int res = ::send(clientSocket, data.c_str(), data.length(), 0);
+	int res = ::send(clientSocket, (to_string(data.length()) + "\0" + data) .c_str(), data.length(), 0);
 	if (res == SOCKET_ERROR) {
 		this->logMessages("Failed to send data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
 		closesocket(this->socket);
 		WSACleanup();
 		return return_code::send_error;
 	}
+	return return_code::success;
 }
 
 string NetworkBase::recv(const int buf_size)
@@ -109,14 +113,15 @@ string NetworkBase::recv(const int buf_size)
 	// if (res > 0) res is the bytes received.
 	// if (res == 0) connection is closed.
 	// if (res < 0) recv error
-
 	if (res < 0)
 	{
-		this->logMessages("Failed to receiving data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
+		this->logMessages("Failed to receive data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
 		return nullptr;
 	}
-	if (res == 0) return "ended";
-	if (buffer == 0) return "DDD";
+	if (res == 0)
+	{
+		return string("x\1x\1");
+	}
 	return string(buffer,res);
 }
 
@@ -163,8 +168,8 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::listen(int backlog)
 		closesocket(this->socket);
 		WSACleanup();
 		return return_code::listen_error;
-
 	}
+	return return_code::success;
 
 }
 
@@ -180,4 +185,24 @@ NetworkBase* NetworkBase::accept()
 		return nullptr;
 	}
 	return new NetworkBase(clientSocket);
+}
+
+void NetworkBase::close()
+{
+	::closesocket(this->socket);
+}
+
+void NetworkBase::shutdown(int x){}
+
+NetworkBase::return_code NetworkBase::settimeout(int timeout)
+{
+
+	int res = setsockopt(this->socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(int));
+	if (res == SOCKET_ERROR)
+	{
+		this->logMessages(((string)"Error setting socket timeout: " + to_string(WSAGetLastError())).c_str(), log_level::error);
+		return return_code::settimeout_error;
+	}
+	return return_code::success;
+
 }

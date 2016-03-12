@@ -3,13 +3,15 @@
 #include "targetver.h"
 
 // Windows Header Files:
-#include <windows.h>
+#define _WINSOCKAPI_    // stops windows.h including winsock.h
+
+#include <Windows.h>
 #include <stdio.h>
 #include <shlwapi.h>
 #include <iostream>
 #include <string.h>
 #include <iomanip>
-
+#include <WinSock2.h>
 
 using namespace std;
 

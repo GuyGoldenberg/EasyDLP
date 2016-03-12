@@ -19,6 +19,12 @@
     <Filter Include="Header Files\HookLib">
       <UniqueIdentifier>{7ff0afaf-2350-427f-a5b6-c650df53ce86}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\JsonLib">
+      <UniqueIdentifier>{7f93f5ca-410f-4730-8aa4-e09a58563da2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\NetworkLib">
+      <UniqueIdentifier>{70d2221b-7bde-4fe4-bc89-7f1d6bd3c93f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -54,6 +60,21 @@
     <ClInclude Include="file_validator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="JsonLib\json\json.h">
+      <Filter>Header Files\JsonLib</Filter>
+    </ClInclude>
+    <ClInclude Include="JsonLib\json\json-forwards.h">
+      <Filter>Header Files\JsonLib</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLib\network_lib.h">
+      <Filter>Header Files\NetworkLib</Filter>
+    </ClInclude>
+    <ClInclude Include="md5.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Incident.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -84,6 +105,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="file_validator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="JsonLib\jsoncpp.cpp">
+      <Filter>Header Files\JsonLib</Filter>
+    </ClCompile>
+    <ClCompile Include="md5.cpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Incident.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
