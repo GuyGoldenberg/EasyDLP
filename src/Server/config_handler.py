@@ -2,18 +2,27 @@ from ConfigParser import SafeConfigParser
 
 
 class ConfigHandler(object, SafeConfigParser):
-    CONFIG_FILENAME = "config.ini"
-    STRINGS_FILENAME = "strings.ini"
+    CLIENT, SERVER, STRINGS = range(3)
 
-    def __init__(self, section=None, strings=False):
+
+    CLIENT_FILENAME = "client.ini"
+    SERVER_FILENAME = "server.ini"
+    STRINGS_FILENAME = "strings.ini"
+    CONFIG_FILENAME = "config.ini"
+
+    def __init__(self, conf_type=None, section=None):
         SafeConfigParser.__init__(self)
         self.section = section
-        if strings:
+        if conf_type == ConfigHandler.CLIENT:
+            self.read(ConfigHandler.CLIENT_FILENAME)
+        elif conf_type == ConfigHandler.SERVER:
+            self.read(ConfigHandler.SERVER_FILENAME)
+        elif conf_type == ConfigHandler.STRINGS:
             self.read(ConfigHandler.STRINGS_FILENAME)
         else:
             self.read(ConfigHandler.CONFIG_FILENAME)
-        if section is not None:
 
+        if section is not None:
             self.section_vars = dict(self.items(section))
 
     def save(self):
@@ -26,12 +35,11 @@ class ConfigHandler(object, SafeConfigParser):
         else:
             return super(ConfigHandler, self).get(section, option)
 
-    def __getattribute__(self, item):
+    def __getattr__(self, item):
         """
         :rtype: str
         """
-        if item.startswith("s_") and hasattr(self, "section_vars"):
+        if hasattr(self, "section_vars"):
             return self.section_vars.get(item, None)
         else:
             return super(ConfigHandler, self).__getattribute__(item)
-

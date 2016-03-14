@@ -3,8 +3,8 @@
 
 import ctypes
 import logger
-from network import DLL_PATH, STRINGS
-
+from network import DLL_PATH
+print DLL_PATH
 LOGGER = logger.Logger()
 
 
@@ -19,6 +19,9 @@ class NetworkError(Exception):
 
 class NetworkBase:
     def __init__(self, p_network_obj=None):
+
+        import os
+        print os.path.isfile(DLL_PATH)
         self.network = ctypes.CDLL(DLL_PATH)
         self.__kill = False
         if p_network_obj is not None:
@@ -37,7 +40,6 @@ class NetworkBase:
     @staticmethod
     def format_error(template, e):
         """
-
         :type template: str
         :type e: NetworkError
         :return: formatted string
@@ -54,7 +56,7 @@ class NetworkBase:
             result = self.network.net_connect(self.p_network_obj, ip, port)
             self.check_for_errors(result)
         except NetworkError as e:
-            LOGGER.error(self.format_error(STRINGS.s_connect_error, e))
+            LOGGER.error(self.format_error(STRINGS.connect_error, e))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -67,7 +69,7 @@ class NetworkBase:
             result = self.network.net_bind(self.p_network_obj, port)
             self.check_for_errors(result)
         except NetworkError as e:
-            LOGGER.error(self.format_error(STRINGS.s_bind_error, e))
+            LOGGER.error(self.format_error(STRINGS.bind_error, e))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -80,7 +82,7 @@ class NetworkBase:
             result = self.network.net_listen(self.p_network_obj, backlog)
             self.check_for_errors(result)
         except NetworkError as e:
-            LOGGER.error(self.format_error(STRINGS.s_listen_error, e))
+            LOGGER.error(self.format_error(STRINGS.listen_error, e))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -92,12 +94,12 @@ class NetworkBase:
             result = self.network.net_accept(self.p_network_obj)
             self.check_for_errors(result)
             if result == 0:
-                raise NetworkError(-1, STRINGS.s_nullptr)
+                raise NetworkError(-1, STRINGS.nullptr)
         except NetworkError as e:
             if e.id != -1:
-                LOGGER.error(self.format_error(STRINGS.s_accept_error, e))
+                LOGGER.error(self.format_error(STRINGS.accept_error, e))
             else:
-                LOGGER.error(STRINGS.s_nullptr.format(error_name="accept"))
+                LOGGER.error(STRINGS.nullptr.format(error_name="accept"))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -114,12 +116,12 @@ class NetworkBase:
             else:
                 result = self.network.net_recv(client, buffer_size)
             if result == 0:
-                raise NetworkError(-1, STRINGS.s_nullptr.format(error_name="recv"))
+                raise NetworkError(-1, STRINGS.nullptr.format(error_name="recv"))
         except NetworkError as e:
             if e.id != -1:
-                LOGGER.error(self.format_error(STRINGS.s_recv_error, e))
+                LOGGER.error(self.format_error(STRINGS.recv_error, e))
             else:
-                LOGGER.error(STRINGS.s_nullptr.format(error_name="recv"))
+                LOGGER.error(STRINGS.nullptr.format(error_name="recv"))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -135,7 +137,7 @@ class NetworkBase:
             else:
                 result = self.network.net_send(client, data)
         except NetworkError as e:
-            LOGGER.error(self.format_error(STRINGS.s_send_error, e))
+            LOGGER.error(self.format_error(STRINGS.send_error, e))
             raise e
         except Exception as e:
             LOGGER.error(str(e))
@@ -148,7 +150,7 @@ class NetworkBase:
             result = self.network.net_settimeout(self.p_network_obj, timeout)
             self.check_for_errors(result)
         except NetworkError as e:
-            LOGGER.error(self.format_error(STRINGS.s_settimeout_error, e))
+            LOGGER.error(self.format_error(STRINGS.settimeout_error, e))
             raise e
         except Exception as e:
             LOGGER.error(str(e))

@@ -1,21 +1,37 @@
-from network import network_base
+from network import CONFIG, network_base
 import threading
 import Queue
 import json
 import os
 import config_handler
 import thread
-config = config_handler.ConfigHandler(strings=True)
 
-SOCKET_CLOSE_DATA = config.get("Network", "socket_close").decode('string_escape')
-INCIDENTS_FILE = "incidents.json"
+PROTOCOL_CATEGORY = "protocol"
+PROTO_CODES = "protocol_codes"
+NETWORK_CATEGORY = "network"
 
-SERVER_HELLO = "HELLO"
-CLIENT_HELLO = "CLIENT HELLO"
-SERVER_PORT = 5050
-OK_STATUS = 1
-MAX_RECV = 1024
-INCIDENT_STATUS, AUTH_HELLO, AUTH_COMPLETE = [2, 3, 4]
+# Load config files
+CONFIG = CONFIG
+STRINGS = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.STRINGS)
+SERVER_CONFIG = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.SERVER)
+
+# Load protocol configs
+SERVER_HELLO = CONFIG.get(PROTOCOL_CATEGORY, "server_hello")
+CLIENT_HELLO = CONFIG.get(PROTOCOL_CATEGORY, "client_hello")
+SOCKET_CLOSE_DATA = CONFIG.get(PROTOCOL_CATEGORY, "socket_close").decode('string_escape')
+
+# Load proto codes configs
+PROTOCOL_STATUS_CODES = {"ok": CONFIG.get(PROTO_CODES, "ok"),
+                         "error": CONFIG.get(PROTO_CODES, "error"),
+                         "incident_info": CONFIG.get(PROTO_CODES, "incident_info"),
+                         "authentication": CONFIG.get(PROTO_CODES, "authentication")
+                         }
+
+# Load server configs
+SERVER_PORT = SERVER_CONFIG.get(NETWORK_CATEGORY, "port")
+INCIDENTS_FILE = SERVER_CONFIG.get("default", "incidents_file")
+MAX_RECV = SERVER_CONFIG.getint(NETWORK_CATEGORY, "recv_buffer_size")
+
 
 
 class Server(object):
@@ -24,7 +40,7 @@ class Server(object):
         self.client_list = []
         self.client_messages = Queue.Queue()
         self.server_socket = network_base.NetworkBase()
-        self.init_server_socket(SERVER_PORT)  # TODO: import port from config
+        self.init_server_socket(int(SERVER_PORT))  # TODO: import port from config
         accept_th = self.start_accepting()
         message_th = self.handle_messages()
         accept_th.join()
@@ -63,12 +79,16 @@ class Server(object):
 
 
 class ClientHandler(threading.Thread):
+    auth_statuses = {"auth_no": SERVER_CONFIG.get("default", "auth_no"),
+                     "auth_ok": SERVER_CONFIG.get("default", "auth_ok"),
+                     "auth_complete": SERVER_CONFIG.get("default", "auth_complete")}
+
     def __init__(self, client_socket, client_messages, server):
         super(ClientHandler, self).__init__()
         self.client_socket = client_socket
         self.client_messages = client_messages
         self.server = server
-        self.authenticated = False
+        self.authenticated = self.auth_statuses["auth_no"]
         self.status = None
         self.uid = None
         self.client_info = {}
@@ -91,31 +111,32 @@ class ClientHandler(threading.Thread):
             return True
         return False
 
-
     def send(self, data):
-        self.client_socket.send(data)
+        self.client_socket.send(str(data))
 
     def is_auth(self):
-        return self.authenticated == AUTH_COMPLETE
+        return self.authenticated == self.auth_statuses["auth_complete"]
 
     def kill(self):
         self.__kill.set()
 
     def authenticate(self, message):
-        if self.authenticated == AUTH_COMPLETE:
-            return
-        if not self.authenticated and message.strip() == CLIENT_HELLO:
-            self.client_socket.send(SERVER_HELLO)
-            self.authenticated = AUTH_HELLO
+        if self.authenticated == self.auth_statuses["auth_complete"]:
             return
 
-        if self.authenticated == AUTH_HELLO:
+        if not self.authenticated and message.strip() == CLIENT_HELLO:
+            self.client_socket.send(SERVER_HELLO)
+            self.authenticated = self.auth_statuses["auth_ok"]
+            return
+
+        if self.authenticated == self.auth_statuses["auth_ok"]:
             response = message.splitlines()
             self.status, self.uid = response[0].strip().split(" ")
-            if int(self.status) != OK_STATUS:
-                self.authenticated = CLIENT_HELLO
+            if int(self.status) != PROTOCOL_STATUS_CODES["authentication"]:
                 return
-            self.send(SERVER_HELLO)
+
+            # TODO: check if client already runs.
+
             response = response[1:]
             if len(response) > 0:
                 for line in response:
@@ -124,8 +145,8 @@ class ClientHandler(threading.Thread):
                         key = response[0:key_end]
                         value = response[key_end + 1:].strip()
                         self.client_info[key] = value
-            self.authenticated = AUTH_COMPLETE
-
+            self.authenticated = self.auth_statuses["auth_complete"]
+            self.send(PROTOCOL_STATUS_CODES["ok"])
             print "New client authenticated: {uid}".format(uid=self.uid)
             return
         return
@@ -165,24 +186,9 @@ class MessageHandler(threading.Thread):
             return
 
         status = int(data.split(" ")[0])
-        if status == INCIDENT_STATUS:
+        if status == PROTOCOL_STATUS_CODES["incident_info"]:
             incident_information = json.loads(data[data.find(" "):])
             client.new_incident(incident_information)
             client.send("0 OK")
-
-
-# sock = network_base.NetworkBase()
-# sock.bind("5050")
-# sock.listen(10)
-# while True:
-#     client = sock.accept()
-#     print client
-#     r = client.recv(1024)
-#     s = r
-#     print r
-#     while len(r) > 0 and not r.endswith("\r\n"):
-#         r = client.recv(1024)
-#         s += r
-#     print r
 if __name__ == "__main__":
     Server()

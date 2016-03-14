@@ -21,7 +21,7 @@ void Hook::connectToServer()
 	this->sock->socketInit();
 	this->sock->connect("127.0.0.1", "5050");
 
-	this->sock->send("CLIENT HELLO\r\n");
+	this->sock->send("CLIENT HELLO");
 	string response = this->sock->recv(1024);
 	
 
