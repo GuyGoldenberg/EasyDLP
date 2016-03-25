@@ -4,10 +4,12 @@
 #include <set>
 #include <string>
 using namespace std; 
-typedef set<string> stringSet ; 
+typedef set<string> stringSet; 
 
 void InjectBlackSet (const stringSet& processNames )
 {
+	Injector injector(R"(C:\Users\Guy\Documents\EasyDLP\src\Network\Debug\network_lib.dll)");
+	injector.addDll(R"(C:\Users\Guy\Documents\EasyDLP\src\Hook\Debug\MyDllHook.dll)");
 	HANDLE hProcess = NULL;
 	PROCESSENTRY32 entry;
 	entry.dwSize = sizeof(PROCESSENTRY32);
@@ -26,7 +28,7 @@ void InjectBlackSet (const stringSet& processNames )
 				if (processNames.find(str) != processNames.end())
 				{  
 					hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, entry.th32ProcessID);
-					int res = Inject(hProcess);
+					int res = injector.Inject(hProcess);
 					CloseHandle(hProcess);
 				}
 			}

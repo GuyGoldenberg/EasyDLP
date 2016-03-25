@@ -5,10 +5,19 @@
 
 using namespace std;
 
-Injector::Injector(const char *DllPath)
+Injector::Injector(vector<string> dllPathVector)
 {
-	HOOK_DLL_PATH = (char *)malloc(strlen(DllPath) * sizeof(char));
-	strcpy((char *)HOOK_DLL_PATH, DllPath);
+	this->dllPathVector = dllPathVector;
+}
+
+Injector::Injector(string dllPath)
+{
+	this->dllPathVector.push_back(dllPath);
+}
+
+void Injector::addDll(string dllPath)
+{
+	this->dllPathVector.push_back(dllPath);
 }
 
 #pragma region Detach
@@ -53,7 +62,7 @@ void Injector::Detach(HANDLE hProcess, const char *modulePath)
 #pragma endregion
 
 #pragma region Inject
-int Injector::Inject( HANDLE hProcess )
+bool Injector::Inject( HANDLE hProcess )
 {
 	HANDLE hThread;
 	
@@ -62,12 +71,13 @@ int Injector::Inject( HANDLE hProcess )
 	DWORD  hLibModule = 0;	
 
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
-
+	for (string dllPath : this->dllPathVector)
+	{
 	// Allocate memory for the dll path
-	pLibRemote = VirtualAllocEx( hProcess, NULL, sizeof(HOOK_DLL_PATH), MEM_COMMIT, PAGE_READWRITE );
+	pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(dllPath.c_str()), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if( pLibRemote == NULL )
 		return false;
-	WriteProcessMemory(hProcess, pLibRemote, (void*)HOOK_DLL_PATH,sizeof(HOOK_DLL_PATH),NULL);
+	WriteProcessMemory(hProcess, pLibRemote, dllPath.c_str(), dllPath.size() + sizeof(char), NULL);
 
 	// Load the DLL into the process
 	hThread = CreateRemoteThread( hProcess, NULL, 0,	
@@ -79,15 +89,16 @@ int Injector::Inject( HANDLE hProcess )
 
 
 	::WaitForSingleObject( hThread, INFINITE );
+	::VirtualFreeEx(hProcess, pLibRemote, sizeof(dllPath.c_str()), MEM_RELEASE);
 	// TODO Handle a thread error by identifying the thread exit code
-	GetExitCodeThread( hThread, &hLibModule );
 
-	CloseHandle( hThread );
-	::VirtualFreeEx( hProcess, pLibRemote, sizeof(HOOK_DLL_PATH), MEM_RELEASE );
+	GetExitCodeThread( hThread, &hLibModule );
+	CloseHandle(hThread);
+
+	}
 	if( hLibModule == NULL )
 		return false;
 
-	// return value of remote FreeLibrary (=nonzero on success)
-	return hLibModule;
+	return true;
 }
 #pragma endregion
