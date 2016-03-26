@@ -1,9 +1,10 @@
 #pragma region Includes
 #include "stdafx.h"
-#include "InjCode.h"
+#include "Injector.h"
 #pragma endregion
 
 using namespace std;
+
 
 Injector::Injector(vector<string> dllPathVector)
 {
@@ -47,7 +48,7 @@ HMODULE Injector::GetModuleHandleByName(HANDLE hProcess, const char *modName)
 void Injector::Detach(HANDLE hProcess, const char *modulePath)
 {
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
-	HMODULE hModule = GetModuleHandleByName(hProcess, modulePath);
+	HMODULE hModule = this->GetModuleHandleByName(hProcess, modulePath);
 	HANDLE hThread = CreateRemoteThread( hProcess,
                 NULL, 0,
                 (LPTHREAD_START_ROUTINE) ::GetProcAddress(hKernel32,"FreeLibrary"),
@@ -61,6 +62,7 @@ void Injector::Detach(HANDLE hProcess, const char *modulePath)
 }
 #pragma endregion
 
+
 #pragma region Inject
 bool Injector::Inject( HANDLE hProcess )
 {
@@ -69,31 +71,33 @@ bool Injector::Inject( HANDLE hProcess )
 	void*  pLibRemote = 0;	
 							
 	DWORD  hLibModule = 0;	
-
+	string pathToInject;
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
-	for (string dllPath : this->dllPathVector)
+	for (string dllName : this->dllPathVector)
 	{
-	// Allocate memory for the dll path
-	pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(dllPath.c_str()), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	if( pLibRemote == NULL )
-		return false;
-	WriteProcessMemory(hProcess, pLibRemote, dllPath.c_str(), dllPath.size() + sizeof(char), NULL);
 
-	// Load the DLL into the process
-	hThread = CreateRemoteThread( hProcess, NULL, 0,	
-					(LPTHREAD_START_ROUTINE) ::GetProcAddress(hKernel32,"LoadLibraryA"), 
-					pLibRemote, 0, NULL );
+		pathToInject = joinPath(getWorkingPath(), dllName);
+		// Allocate memory for the dll path
+		pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(pathToInject.c_str()), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		if( pLibRemote == NULL )
+			return false;
+		WriteProcessMemory(hProcess, pLibRemote, pathToInject.c_str(), pathToInject.size() + sizeof(char), NULL);
 
-	if( hThread == NULL )
-		// TODO Handle thread creation error
+		// Load the DLL into the process
+		hThread = CreateRemoteThread( hProcess, NULL, 0,	
+						(LPTHREAD_START_ROUTINE) ::GetProcAddress(hKernel32,"LoadLibraryA"), 
+						pLibRemote, 0, NULL );
+
+		if( hThread == NULL )
+			// TODO Handle thread creation error
 
 
-	::WaitForSingleObject( hThread, INFINITE );
-	::VirtualFreeEx(hProcess, pLibRemote, sizeof(dllPath.c_str()), MEM_RELEASE);
-	// TODO Handle a thread error by identifying the thread exit code
+		::WaitForSingleObject( hThread, INFINITE );
+		::VirtualFreeEx(hProcess, pLibRemote, sizeof(pathToInject.c_str()), MEM_RELEASE);
+		// TODO Handle a thread error by identifying the thread exit code
 
-	GetExitCodeThread( hThread, &hLibModule );
-	CloseHandle(hThread);
+		GetExitCodeThread( hThread, &hLibModule );
+		CloseHandle(hThread);
 
 	}
 	if( hLibModule == NULL )
@@ -102,3 +106,18 @@ bool Injector::Inject( HANDLE hProcess )
 	return true;
 }
 #pragma endregion
+
+string getWorkingPath()
+{
+	TCHAR buffer[MAX_PATH];
+	GetModuleFileName(NULL, buffer, MAX_PATH);
+	PathRemoveFileSpec(buffer);
+	return CW2A(buffer);
+}
+
+string joinPath(string path, string dllName)
+{
+	TCHAR pathWithDll[MAX_PATH];
+	PathCombine(pathWithDll, wstring(path.begin(), path.end()).c_str(), wstring(dllName.begin(), dllName.end()).c_str());
+	return CW2A(pathWithDll);
+}

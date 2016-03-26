@@ -6,17 +6,24 @@
 #ifndef INJCODE_H
 #define INJCODE_H
 using namespace std;
+
+string getWorkingPath();
+string joinPath(string path, string dllName);
+
 class Injector
 {
+protected:
+	vector<string> dllPathVector;
+
+
 private:
 	//const char * HOOK_DLL_PATH;
-	vector<string> dllPathVector;
 	HMODULE GetModuleHandleByName(HANDLE, const char *);
-
 public:
-	Injector::Injector(vector<string> dllPathVector);
+	Injector::Injector(){};
+	Injector::Injector(vector<string> dllNamesVector);
 	Injector::Injector(string dllPath);
-	void Injector::addDll(string dllPath);
+	virtual void Injector::addDll(string dllPath);
 	bool Inject(HANDLE);
 	void Detach(HANDLE, const char *);
 
