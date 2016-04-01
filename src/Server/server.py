@@ -1,4 +1,5 @@
-from network import CONFIG, network_base
+import network
+import network.network_base
 import threading
 import Queue
 import json
@@ -11,20 +12,24 @@ PROTO_CODES = "protocol_codes"
 NETWORK_CATEGORY = "network"
 
 # Load config files
-CONFIG = CONFIG
+CONFIG = network.CONFIG
 STRINGS = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.STRINGS)
 SERVER_CONFIG = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.SERVER)
 
 # Load protocol configs
-SERVER_HELLO = CONFIG.get(PROTOCOL_CATEGORY, "server_hello")
-CLIENT_HELLO = CONFIG.get(PROTOCOL_CATEGORY, "client_hello")
-SOCKET_CLOSE_DATA = CONFIG.get(PROTOCOL_CATEGORY, "socket_close").decode('string_escape')
+SERVER_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "server_hello")
+CLIENT_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "client_hello")
+ADMIN_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "admin_hello")
+INJECTOR_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "injector_hello")
+
+SOCKET_CLOSE_DATA = network.CONFIG.get(PROTOCOL_CATEGORY, "socket_close").decode('string_escape')
 
 # Load proto codes configs
-PROTOCOL_STATUS_CODES = {"ok": CONFIG.get(PROTO_CODES, "ok"),
-                         "error": CONFIG.get(PROTO_CODES, "error"),
-                         "incident_info": CONFIG.get(PROTO_CODES, "incident_info"),
-                         "authentication": CONFIG.get(PROTO_CODES, "authentication")
+PROTOCOL_STATUS_CODES = {"ok": network.CONFIG.getint(PROTO_CODES, "ok"),
+                         "error": network.CONFIG.getint(PROTO_CODES, "error"),
+                         "incident_info": network.CONFIG.getint(PROTO_CODES, "incident_info"),
+                         "authentication": network.CONFIG.getint(PROTO_CODES, "authentication"),
+                         "get_rules": network.CONFIG.getint(PROTO_CODES, "get_rules")
                          }
 
 # Load server configs
@@ -33,13 +38,12 @@ INCIDENTS_FILE = SERVER_CONFIG.get("default", "incidents_file")
 MAX_RECV = SERVER_CONFIG.getint(NETWORK_CATEGORY, "recv_buffer_size")
 
 
-
 class Server(object):
     def __init__(self):
         super(Server, self).__init__()
         self.client_list = []
         self.client_messages = Queue.Queue()
-        self.server_socket = network_base.NetworkBase()
+        self.server_socket = network.network_base.NetworkBase()
         self.init_server_socket(int(SERVER_PORT))  # TODO: import port from config
         accept_th = self.start_accepting()
         message_th = self.handle_messages()
@@ -60,8 +64,9 @@ class Server(object):
 
     def accept_clients(self):
         while True:
-            client_socket = self.server_socket.accept()
-            client = ClientHandler(client_socket, self.client_messages, self)
+            client_socket, client_addr = self.server_socket.accept()
+            client = ClientHandler(client_socket, self.client_messages, self, client_addr)
+            print client
             self.client_list.append(client)
             client.daemon = True
             client.start()
@@ -74,24 +79,28 @@ class Server(object):
 
     def remove_client(self, client):
         if client in self.client_list:
+            print "Client removed: {uid}".format(uid=client.uid)
             client.kill()
             self.client_list.remove(client)
 
 
 class ClientHandler(threading.Thread):
-    auth_statuses = {"auth_no": SERVER_CONFIG.get("default", "auth_no"),
-                     "auth_ok": SERVER_CONFIG.get("default", "auth_ok"),
-                     "auth_complete": SERVER_CONFIG.get("default", "auth_complete")}
+    auth_statuses = {"auth_no": SERVER_CONFIG.getint("default", "auth_no"),
+                     "auth_ok": SERVER_CONFIG.getint("default", "auth_ok"),
+                     "auth_complete": SERVER_CONFIG.getint("default", "auth_complete")}
+    client_types = {"unknown": -1, "hook": 0, "injector": 1, "admin": 2}
 
-    def __init__(self, client_socket, client_messages, server):
+    def __init__(self, client_socket, client_messages, server, client_addr):
         super(ClientHandler, self).__init__()
         self.client_socket = client_socket
         self.client_messages = client_messages
         self.server = server
+        self.addr = client_addr
         self.authenticated = self.auth_statuses["auth_no"]
         self.status = None
-        self.uid = None
+        self.uid = self.addr
         self.client_info = {}
+        self.client_type = self.client_types["unknown"]
         self.__kill = threading.Event()
 
     def run(self):
@@ -120,13 +129,27 @@ class ClientHandler(threading.Thread):
     def kill(self):
         self.__kill.set()
 
+    def authenticate_admin(self, message):
+        pass
+
     def authenticate(self, message):
         if self.authenticated == self.auth_statuses["auth_complete"]:
             return
 
-        if not self.authenticated and message.strip() == CLIENT_HELLO:
+        if not self.is_auth() and message.strip() in [CLIENT_HELLO, INJECTOR_HELLO, ADMIN_HELLO]:
+            print "HERREE"
             self.client_socket.send(SERVER_HELLO)
             self.authenticated = self.auth_statuses["auth_ok"]
+            if message.strip() == CLIENT_HELLO:
+                self.client_type = self.client_types["hook"]
+            elif message.strip() == INJECTOR_HELLO:
+                self.client_type = self.client_types["injector"]
+            elif message.strip() == ADMIN_HELLO:
+                self.client_type = self.client_types["admin"]
+            return
+
+        if self.client_type == self.client_types["admin"]:
+            self.authenticate_admin()
             return
 
         if self.authenticated == self.auth_statuses["auth_ok"]:
@@ -147,7 +170,7 @@ class ClientHandler(threading.Thread):
                         self.client_info[key] = value
             self.authenticated = self.auth_statuses["auth_complete"]
             self.send(PROTOCOL_STATUS_CODES["ok"])
-            print "New client authenticated: {uid}".format(uid=self.uid)
+            print "New client[{type}] authenticated: {uid}".format(uid=self.uid, type=self.client_type)
             return
         return
 
@@ -165,6 +188,13 @@ class ClientHandler(threading.Thread):
                 current_incidents[self.uid] = [incident]
             f.write(json.dumps(current_incidents, indent=4))
 
+    def send_rules(self):
+        if self.client_type == self.client_types["hook"]:
+            pass
+        elif self.client_type == self.client_types["injector"]:
+            self.send("{\"inject_to\":[\"notepad++.exe\", \"firefox.exe\"]}")
+        elif self.client_type == self.client_types["admin"]:
+            pass
 
 class MessageHandler(threading.Thread):
     def __init__(self, client_messages, server):
@@ -183,12 +213,20 @@ class MessageHandler(threading.Thread):
             return
 
         if data.find(" ") == -1:
-            return
+            if data.isnumeric():
+                status = int(data)
+            else:
+                return
+        else:
+            status = int(data.split(" ")[0])
 
-        status = int(data.split(" ")[0])
         if status == PROTOCOL_STATUS_CODES["incident_info"]:
             incident_information = json.loads(data[data.find(" "):])
             client.new_incident(incident_information)
-            client.send("0 OK")
+            client.send(PROTOCOL_STATUS_CODES["ok"])
+        elif status == PROTOCOL_STATUS_CODES["get_rules"]:
+            client.send_rules()
+
+
 if __name__ == "__main__":
     Server()

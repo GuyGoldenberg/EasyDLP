@@ -3,7 +3,8 @@
 
 import ctypes
 import logger
-from network import DLL_PATH
+from network import DLL_PATH, STRINGS
+
 print DLL_PATH
 LOGGER = logger.Logger()
 
@@ -29,7 +30,8 @@ class NetworkBase:
         else:
             self.p_network_obj = self.network.New_NetworkBase()
         return_codes_list = ["wsastrartup_error", "getaddrinfo_error", "socket_create_error", "connect_error",
-                             "send_error", "bind_error", "listen_error", "accept_error", "nullptr_error", "settimeout_error"]
+                             "send_error", "bind_error", "listen_error", "accept_error", "nullptr_error",
+                             "settimeout_error"]
         self.return_codes = dict((id + 1, item) for id, item in enumerate(return_codes_list))
 
     def check_for_errors(self, return_code):
@@ -104,8 +106,11 @@ class NetworkBase:
         except Exception as e:
             LOGGER.error(str(e))
             raise e
+        client = NetworkBase(p_network_obj=result)
+        return [client, client.get_info()]
 
-        return NetworkBase(p_network_obj=result)
+    def get_info(self):
+        return ctypes.cast(self.network.net_getinfo(self.p_network_obj), ctypes.c_char_p).value
 
     def recv(self, buffer_size, client=None):
         buffer_size = ctypes.c_int(buffer_size)
@@ -155,5 +160,3 @@ class NetworkBase:
         except Exception as e:
             LOGGER.error(str(e))
             raise e
-
-

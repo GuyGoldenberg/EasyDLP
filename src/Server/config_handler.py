@@ -24,6 +24,8 @@ class ConfigHandler(object, SafeConfigParser):
 
         if section is not None:
             self.section_vars = dict(self.items(section))
+        else:
+            self.section_vars = None
 
     def save(self):
         with open(ConfigHandler.CONFIG_FILENAME, 'w') as f:
@@ -39,7 +41,7 @@ class ConfigHandler(object, SafeConfigParser):
         """
         :rtype: str
         """
-        if hasattr(self, "section_vars"):
+        if self.section_vars is not None and item in self.section_vars:
             return self.section_vars.get(item, None)
         else:
             return super(ConfigHandler, self).__getattribute__(item)
