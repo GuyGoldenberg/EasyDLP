@@ -1,4 +1,5 @@
 #pragma once
+#include <winsock2.h>
 
 #include <SDKDDKVer.h> // Basic Windows definitons
 #include <Windows.h>

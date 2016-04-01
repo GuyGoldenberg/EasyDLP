@@ -47,11 +47,16 @@ bool InjectionManager::alreadyInjected(HANDLE hProcess){
 			{
 				modName = szModName;
 				strModName = string(modName.begin(), modName.end());
-				if (std::find(this->dllPathVector.begin(), this->dllPathVector.end(), strModName) != this->dllPathVector.end())
+
+				for (string dllPath : this->dllPathVector)
 				{
-					return true;
+					
+
+					if (joinPath(getWorkingPath(), dllPath) == strModName)
+						return true;
 				}
 			}
+				
 		}
 	}
 	return false;

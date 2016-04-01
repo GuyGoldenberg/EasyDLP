@@ -67,22 +67,31 @@ void Injector::Detach(HANDLE hProcess, const char *modulePath)
 bool Injector::Inject( HANDLE hProcess )
 {
 	HANDLE hThread;
-	
+	TCHAR processNameTchar[MAX_PATH];
+	GetModuleBaseName(hProcess, 0, processNameTchar, MAX_PATH);
+	wstring procName(processNameTchar);
+	string processName = string(procName.begin(), procName.end());
+	cout << "Starting injection process to " << processName << endl;
 	void*  pLibRemote = 0;	
-							
+					
 	DWORD  hLibModule = 0;	
 	string pathToInject;
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
 	for (string dllName : this->dllPathVector)
 	{
-
+		cout << "\t*Injecting " << dllName << " to " << processName << endl;
 		pathToInject = joinPath(getWorkingPath(), dllName);
 		// Allocate memory for the dll path
+		cout << "\t*Allocating memory for " << to_string(pathToInject.size()) << " bytes in " << processName << endl;
 		pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(pathToInject.c_str()), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		cout << "\t*Memory allocated at " << pLibRemote << endl;
 		if( pLibRemote == NULL )
 			return false;
+		cout << "\t*Writing dll path (" << dllName << ") to " << processName << " at " << pLibRemote << endl;
+
 		WriteProcessMemory(hProcess, pLibRemote, pathToInject.c_str(), pathToInject.size() + sizeof(char), NULL);
 
+		cout << "\t*Ceating remote thread with LoadLibrary" << endl;
 		// Load the DLL into the process
 		hThread = CreateRemoteThread( hProcess, NULL, 0,	
 						(LPTHREAD_START_ROUTINE) ::GetProcAddress(hKernel32,"LoadLibraryA"), 
@@ -97,6 +106,12 @@ bool Injector::Inject( HANDLE hProcess )
 		// TODO Handle a thread error by identifying the thread exit code
 
 		GetExitCodeThread( hThread, &hLibModule );
+		if (hLibModule == 0)
+		{
+
+			cout << "\t*"<< dllName << " injected successfully to " << processName << " at " << pLibRemote << "\r\n" <<endl;
+
+		}
 		CloseHandle(hThread);
 
 	}

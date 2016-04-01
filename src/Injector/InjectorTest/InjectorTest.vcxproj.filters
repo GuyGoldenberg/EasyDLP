@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\NetworkLib">
+      <UniqueIdentifier>{366322fc-3cbe-48c5-9984-4c924d27d65e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\JsonLib">
+      <UniqueIdentifier>{98598a50-7a27-4fe0-adac-efe3b2aa9928}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -23,6 +29,18 @@
     </ClInclude>
     <ClInclude Include="Injector.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkLib\network_lib.h">
+      <Filter>Header Files\NetworkLib</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="JsonLib\json\json.h">
+      <Filter>Header Files\JsonLib</Filter>
+    </ClInclude>
+    <ClInclude Include="JsonLib\json\json-forwards.h">
+      <Filter>Header Files\JsonLib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -36,6 +54,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Injector.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ServerHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="JsonLib\jsoncpp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
