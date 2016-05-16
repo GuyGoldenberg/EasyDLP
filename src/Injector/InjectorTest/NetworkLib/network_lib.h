@@ -1,16 +1,15 @@
 #ifdef NETWORKLIB_EXPORTS
-	#define NETWORKLIB_API __declspec(dllexport)
+#define NETWORKLIB_API __declspec(dllexport)
 #else
-	#define NETWORKLIB_API __declspec(dllimport)
+#define NETWORKLIB_API __declspec(dllimport)
 #endif
 
 
 #pragma once
-#define WIN32_LEAN_AND_MEAN 
+#include <winsock2.h>
 #include <Windows.h>
-
-
 #include <string>
+#include "stdafx.h"
 
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
@@ -25,9 +24,9 @@ private:
 	string serverAddress;
 	struct addrinfo hints;
 	int serverPort;
-	string ip;
-	string port;
-	typedef enum log_levels {error, warning, info, debug } log_level;
+	char * ip;
+	char * port;
+	typedef enum log_levels { error, warning, info, debug } log_level;
 	void logMessages(const char *message, log_level level) { MessageBoxA(NULL, message, NULL, NULL); }; // TODO Create a logging module and implement here.
 	void logMessages(const string message, log_level level) { MessageBoxA(NULL, message.c_str(), NULL, NULL); }; // TODO Create a logging module and implement here.
 
@@ -36,16 +35,16 @@ public:
 	NetworkBase(void);
 	NetworkBase(SOCKET &sock);
 	return_code socketInit();
-	return_code connect(const string serverAddress, const char * port);
-	void setInfo(string ip, string port);
-	string getIP();
-	string getPort();
-	return_code send(const string data);
-	return_code send(SOCKET clientSocket, const string data);
+	return_code connect(const char* serverAddress, const char * port);
+	void setInfo(const char*  ip, const char*  port);
+	const char*  getIP();
+	const char*  getPort();
+	return_code send(const char*  data);
+	return_code send(SOCKET clientSocket, const char* data);
 	return_code bind(const char * port);
 	return_code listen(int backlog);
 	NetworkBase* accept();
-	string recv(const int buf_size);
+	char *  recv(const int buf_size);
 	void close();
 	void shutdown(int x);
 	return_code settimeout(int timeout);
@@ -67,7 +66,6 @@ extern "C"{
 	NETWORKLIB_API return_code net_connect(NetworkBase* netBase, char* ip, char* port)
 	{
 		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
-
 		return netBase->connect(ip, port);
 	}
 
@@ -76,16 +74,14 @@ extern "C"{
 		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
 		return netBase->send(data);
 	}
-	
+
 	NETWORKLIB_API char* net_recv(NetworkBase* netBase, int buf_size)
 	{
 		if (netBase == nullptr || netBase == 0) return nullptr;
-		string res = netBase->recv(buf_size).c_str();
+		string res = netBase->recv(buf_size);
 		if (res.length() == 0) return nullptr;
 		return _strdup(res.c_str());
 	}
-	
-
 
 	NETWORKLIB_API return_code net_bind(NetworkBase* netBase, const char * port)
 	{
@@ -104,6 +100,7 @@ extern "C"{
 		if (netBase == nullptr || netBase == 0) return nullptr;
 		return netBase->accept();
 	}
+
 	NETWORKLIB_API return_code net_settimeout(NetworkBase* netBase, int timeout)
 	{
 		if (netBase == nullptr || netBase == 0) return NetworkBase::return_code::nullptr_error;
@@ -126,8 +123,13 @@ extern "C"{
 
 	NETWORKLIB_API char* net_getinfo(NetworkBase* netBase)
 	{
+
 		if (netBase == nullptr || netBase == 0) return "";
-		return _strdup((netBase->getIP() + ":" + netBase->getPort()).c_str());
+		const char * ip = netBase->getIP();
+		const char * port = netBase->getPort();
+		MessageBoxA(0, port, 0, 0);
+		string fullAddr = string(ip) + string(":") + string(port);
+		return _strdup(fullAddr.c_str());
 	}
 
 

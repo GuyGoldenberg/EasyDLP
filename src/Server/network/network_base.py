@@ -5,7 +5,6 @@ import ctypes
 import logger
 from network import DLL_PATH, STRINGS
 
-print DLL_PATH
 LOGGER = logger.Logger()
 
 
@@ -21,8 +20,6 @@ class NetworkError(Exception):
 class NetworkBase:
     def __init__(self, p_network_obj=None):
 
-        import os
-        print os.path.isfile(DLL_PATH)
         self.network = ctypes.CDLL(DLL_PATH)
         self.__kill = False
         if p_network_obj is not None:

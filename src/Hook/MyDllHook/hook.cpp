@@ -1,4 +1,3 @@
-
 #include "hook.h"
 #include "stdafx.h"
 #include "string_validator.h"
@@ -7,26 +6,25 @@
 #include "NetworkLib\network_lib.h"
 
 Hook::Hook(){
-	this->sock = new NetworkBase();
 };
 
 void Hook::sendIncident(string data)
 {
-	this->sock->send("2 " + data + "\r\n");
+	this->sock->send(string("2 " + data + "\r\n").c_str());
 	return;
 }
 
 void Hook::connectToServer()
 {
+	this->sock = new NetworkBase();
+
 	this->sock->socketInit();
 	this->sock->connect("127.0.0.1", "5050");
-
-	this->sock->send("CLIENT HELLO");
-	string response = this->sock->recv(1024);
 	
-
-	this->sock->send("1 " + md5(string(this->createUid())));
-	this->sock->recv(1024);	
+	this->sock->send("CLIENT HELLO");
+	string response = string(this->sock->recv(1024));
+	this->sock->send((string("1 ") + string(md5(string(this->createUid())))).c_str());
+	this->sock->recv(1024);
 }
 
 _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L"kernel32"), "CreateFileW");
@@ -102,10 +100,11 @@ void sendIncident(string inc)
 
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
+	
 	string filePath;
 	stringValidator fValidator;
 	filePath = Encode(lpFileName, CP_UTF8); //UTF-8 encoding
-	if (fValidator.endsWith(filePath, ".txt"))
+	if (fValidator.endsWith(filePath, ".ddd"))
 	{
 		TCHAR szEXEPath[2048];
 		char applicationPath[2048];
@@ -117,7 +116,7 @@ HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPS
 			applicationPath[j] = szEXEPath[j];
 		}
 		applicationPath[j] = '\0';
-	
+
 		Json::Value incident;
 		incident["appTitle"] = GetActiveWindowTitle();
 		incident["appPID"] = ::getpid();
@@ -133,6 +132,7 @@ HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPS
 		//MessageBoxA(GetActiveWindow(), inc.str().c_str(), "Confidential information policy violation!", 0x0 | MB_ICONSTOP | MB_TASKMODAL);
 		return INVALID_HANDLE_VALUE;
 	}
+	
 	return Hook::TrueCreateFile(lpFileName, a, b, c, d, e, h);
 }
 
@@ -144,6 +144,7 @@ void Hook::disconnectServer()
 bool Hook::setHook()
 {
 	this->connectToServer();
+	MessageBoxA(0, "Setting hook", 0, 0);
 	BOOL hookResult = Mhook_SetHook((PVOID*)&this->TrueCreateFile, (PVOID)(Hook::SecuredCreateFile));
 	if (!hookResult)
 	{

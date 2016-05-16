@@ -16,9 +16,9 @@ ServerHandler::~ServerHandler()
 
 bool ServerHandler::authenticate()
 {
-	this->send("INJECTOR HELLO");
+	this->send((const char *)"INJECTOR HELLO");
 	this->recv(1024);
-	this->send("1 dfsdfsdf");
+	this->send((const char *)"1 dfsdfsdf");
 	this->recv(1024);
 	return true;
 }
