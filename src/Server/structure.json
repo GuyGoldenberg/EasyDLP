@@ -1,0 +1,13 @@
+{
+  "incidents": {
+    "id":"INTEGER PRIMARY KEY","uId":"varchar(32)", "appTitle":"TEXT", "fileTried":"TEXT", "incidentTime":"TIMESTAMP",
+    "appPath":"TEXT", "actionTaken":"INT","appPid":"INT", "currentUser":"varchar(255)"
+  },
+  "connections": {
+    "id":"INTEGER PRIMARY KEY","uId":"varchar(32)","userType":"varchar(20)",
+    "address":"varchar(21)", "connectionTime":"TIMESTAMP", "authenticated":"INT"
+  },
+  "rules":{"id":"INTEGER PRIMARY KEY", "processName":"varchar(255)", "ruleType":"INT", "actionToTake":"INT", "ruleContent":"TEXT"}
+
+
+}

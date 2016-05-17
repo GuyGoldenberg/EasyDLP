@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "ServerHandler.h"
+#include "md5.h"
+#pragma comment(lib, "crypt32.lib")
 
 using namespace std;
 ServerHandler::ServerHandler()
@@ -14,11 +16,39 @@ ServerHandler::~ServerHandler()
 {
 }
 
+char * ServerHandler::createUid()
+{
+	DATA_BLOB DataIn;
+	DATA_BLOB DataOut;
+	DATA_BLOB DataVerify;
+	BYTE *pbDataInput = (BYTE *)"\1\1";
+	DWORD cbDataInput = strlen((char *)pbDataInput) + 1;
+	DataIn.pbData = pbDataInput;
+	DataIn.cbData = cbDataInput;
+	CRYPTPROTECT_PROMPTSTRUCT PromptStruct;
+	LPWSTR pDescrOut = NULL;
+
+	ZeroMemory(&PromptStruct, sizeof(PromptStruct));
+	PromptStruct.cbSize = sizeof(PromptStruct);
+	PromptStruct.dwPromptFlags = CRYPTPROTECT_PROMPT_ON_PROTECT;
+	PromptStruct.szPrompt = L"This is a user prompt.";
+
+	CryptProtectData(
+		&DataIn,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		CRYPTPROTECT_LOCAL_MACHINE | CRYPTPROTECT_UI_FORBIDDEN,
+		&DataOut);
+	return (char *)DataOut.pbData;
+}
+
 bool ServerHandler::authenticate()
 {
 	this->send((const char *)"INJECTOR HELLO");
 	this->recv(1024);
-	this->send((const char *)"1 dfsdfsdf");
+	this->send((string("1 ") + string(md5(string(this->createUid())))).c_str());
 	this->recv(1024);
 	return true;
 }

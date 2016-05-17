@@ -8,6 +8,9 @@
 class ServerHandler :
 	public NetworkBase
 {
+private:
+	char * createUid();
+
 public:
 	ServerHandler();
 	~ServerHandler();

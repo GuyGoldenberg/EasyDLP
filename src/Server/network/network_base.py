@@ -5,7 +5,7 @@ import ctypes
 import logger
 from network import DLL_PATH, STRINGS
 
-LOGGER = logger.Logger()
+LOGGER = logger.Logger("networkLogger")
 
 
 class NetworkError(Exception):

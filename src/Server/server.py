@@ -1,3 +1,5 @@
+import datetime
+
 import network
 import network.network_base
 import threading
@@ -6,10 +8,15 @@ import json
 import os
 import config_handler
 import thread
+import sqlite3
+import logger
+
+LOGGER = logger.Logger("serverLogger")
 
 PROTOCOL_CATEGORY = "protocol"
 PROTO_CODES = "protocol_codes"
 NETWORK_CATEGORY = "network"
+DATABASE_CATEGORY = "database"
 
 # Load config files
 CONFIG = network.CONFIG
@@ -37,14 +44,93 @@ SERVER_PORT = SERVER_CONFIG.get(NETWORK_CATEGORY, "port")
 INCIDENTS_FILE = SERVER_CONFIG.get("default", "incidents_file")
 MAX_RECV = SERVER_CONFIG.getint(NETWORK_CATEGORY, "recv_buffer_size")
 
+# Load database configs
+DATABASE_NAME = SERVER_CONFIG.get(DATABASE_CATEGORY, "filename")
+DATABASE_STRUCTURE_FILENAME = SERVER_CONFIG.get(DATABASE_CATEGORY, "structure")
+
+
+class DatabaseHandler:
+    def __init__(self, lock):
+        self.db = sqlite3.connect(DATABASE_NAME, check_same_thread=False)
+        self.create_tables()
+        self.lock = lock
+
+    def create_tables(self):
+        try:
+            with open(DATABASE_STRUCTURE_FILENAME) as f:
+                structure = json.load(f)
+
+        except:
+            LOGGER.error("Couldn't open database structure file: {file}".format(file=DATABASE_STRUCTURE_FILENAME))
+            exit()
+
+        for table in structure:
+            query = "create table if not exists {table} ({structure})"
+            structure_query = []
+            for key, type in structure[table].iteritems():
+                structure_query.append("{key} {type}".format(key=key, type=type))
+            query = query.format(table=table, structure=",".join(structure_query))
+            self.db.execute(query)
+
+    def insert_data(self, table, fields, values):
+        self.lock.acquire()
+        query = "INSERT INTO {table}({fields}) VALUES ({questions})".format(table=table, fields=",".join(fields), questions=",".join("?" for x in xrange(len(values))))
+        cursor = self.db.cursor()
+        cursor.execute(query, values)
+        self.db.commit()
+        self.lock.release()
+
+    def update_data(self, table, fields, values, id_name, id_value):
+        self.lock.acquire()
+        # set_data_string = ",".join(["{key}={value}".format(key=item[0], value=item[1])for item in zip(fields, values)])
+
+        set_data_string = ",".join("{key}=?".format(key=item) for item in fields)
+
+        query = "UPDATE {table} set {data} WHERE {idname} = ?".format(table=table, data=set_data_string,
+                                                                      idname=id_name)
+        cursor = self.db.cursor()
+        cursor.execute(query, values + [id_value])
+        self.db.commit()
+
+        self.lock.release()
+
+    def add_incident(self, incident_info):
+        pass
+
+    def new_connection(self, type, addr, uid, time, auth_status):
+        self.insert_data("connections", ["uId", "userType", "address", "connectionTime", "authenticated"],
+                         [uid, type, addr, time, auth_status])
+
+    def set_connection_auth_state(self, uid, state):
+        self.update_data("connections", ["authenticated"], [state], "uId", uid)
+
+    def add_rule(self, rule_info):
+        pass
+
+    def delete_rule(self, rule_id):
+        pass
+
+    def modify_rule(self, rule_id, rule_info):
+        pass
+
+    def get_incidents(self):
+        pass
+
+    def get_rules(self):
+        pass
+
+    def get_connections(self):
+        pass
+
 
 class Server(object):
     def __init__(self):
         super(Server, self).__init__()
         self.client_list = []
+        self.db = DatabaseHandler(threading.Lock())
         self.client_messages = Queue.Queue()
         self.server_socket = network.network_base.NetworkBase()
-        self.init_server_socket(int(SERVER_PORT))  # TODO: import port from config
+        self.init_server_socket(int(SERVER_PORT))
         accept_th = self.start_accepting()
         message_th = self.handle_messages()
         accept_th.join()
@@ -65,7 +151,7 @@ class Server(object):
     def accept_clients(self):
         while True:
             client_socket, client_addr = self.server_socket.accept()
-            client = ClientHandler(client_socket, self.client_messages, self, client_addr)
+            client = ClientHandler(client_socket, self.client_messages, self, client_addr, self.db)
 
             self.client_list.append(client)
             client.daemon = True
@@ -79,7 +165,7 @@ class Server(object):
 
     def remove_client(self, client):
         if client in self.client_list:
-            print "Client removed: {uid}".format(uid=client.uid)
+            LOGGER.info("Client removed: {uid}".format(uid=client.uid))
             client.kill()
             self.client_list.remove(client)
 
@@ -90,9 +176,9 @@ class ClientHandler(threading.Thread):
                      "auth_complete": SERVER_CONFIG.getint("default", "auth_complete")}
     client_types = {"unknown": -1, "hook": 0, "injector": 1, "admin": 2}
 
-    def __init__(self, client_socket, client_messages, server, client_addr):
+    def __init__(self, client_socket, client_messages, server, client_addr, db):
         super(ClientHandler, self).__init__()
-
+        self.db = db
         self.client_socket = client_socket
         self.client_messages = client_messages
         self.server = server
@@ -103,7 +189,8 @@ class ClientHandler(threading.Thread):
         self.client_info = {}
         self.client_type = self.client_types["unknown"]
         self.__kill = threading.Event()
-        print "New client connected: {address}".format(address=self.addr)
+        LOGGER.info("New client connected: {address}".format(address=self.addr))
+        self.db.new_connection(self.client_type, self.addr, self.uid, datetime.datetime.now(), self.authenticated)
 
     def run(self):
         while True:
@@ -149,16 +236,20 @@ class ClientHandler(threading.Thread):
                 self.client_type = self.client_types["admin"]
             return
 
+        self.db.update_data("connections", ["userType", "authenticated"], [self.client_type, self.authenticated], "uId", self.uid)
+
         if self.client_type == self.client_types["admin"]:
             self.authenticate_admin()
             return
 
         if self.authenticated == self.auth_statuses["auth_ok"]:
             response = message.splitlines()
-            self.status, self.uid = response[0].strip().split(" ")
+            self.status, uid = response[0].strip().split(" ")
             if int(self.status) != PROTOCOL_STATUS_CODES["authentication"]:
                 return
-
+            self.authenticated = self.auth_statuses["auth_complete"]
+            self.db.update_data("connections", ["uId", "authenticated"], [uid,self.authenticated], "uId", self.uid)
+            self.uid = uid
             # TODO: check if client already runs.
 
             response = response[1:]
@@ -169,9 +260,9 @@ class ClientHandler(threading.Thread):
                         key = response[0:key_end]
                         value = response[key_end + 1:].strip()
                         self.client_info[key] = value
-            self.authenticated = self.auth_statuses["auth_complete"]
+
             self.send(PROTOCOL_STATUS_CODES["ok"])
-            print "{client_info} has authenticated".format(client_info=self)
+            LOGGER.info("{client_info} has authenticated".format(client_info=self))
             return
         return
 
@@ -200,10 +291,12 @@ class ClientHandler(threading.Thread):
     def __str__(self):
         if self.is_auth():
             return "{type} [Address: {address} | UID: {uid}]".format(address=self.addr, uid=self.uid,
-                                       type=self.client_types.keys()[
-                                           self.client_types.values().index(self.client_type)])
+                                                                     type=self.client_types.keys()[
+                                                                         self.client_types.values().index(
+                                                                                 self.client_type)])
         else:
             return "Client {address} is not authenticated".format(address=self.addr)
+
 
 class MessageHandler(threading.Thread):
     def __init__(self, client_messages, server):
