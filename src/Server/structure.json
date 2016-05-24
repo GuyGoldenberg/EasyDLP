@@ -7,7 +7,7 @@
     "id":"INTEGER PRIMARY KEY","uId":"varchar(32)","userType":"varchar(20)",
     "address":"varchar(21)", "connectionTime":"TIMESTAMP", "authenticated":"INT"
   },
-  "rules":{"id":"INTEGER PRIMARY KEY", "processName":"varchar(255)", "ruleType":"INT", "actionToTake":"INT", "ruleContent":"TEXT"}
-
+  "rules":{"id":"INTEGER PRIMARY KEY", "processName":"varchar(255)", "ruleType":"INT", "actionToTake":"INT", "ruleContent":"TEXT"},
+  "admins":{"id":"INTEGER PRIMARY KEY", "uId":"varchar(32)", "username":"varchar(50)", "password":"TEXT", "salt":"varchar(16)"}
 
 }

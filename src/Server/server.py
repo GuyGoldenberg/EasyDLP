@@ -1,136 +1,141 @@
 import datetime
-
-import network
-import network.network_base
 import threading
 import Queue
 import json
 import os
-import config_handler
 import thread
-import sqlite3
-import logger
-
-LOGGER = logger.Logger("serverLogger")
-
-PROTOCOL_CATEGORY = "protocol"
-PROTO_CODES = "protocol_codes"
-NETWORK_CATEGORY = "network"
-DATABASE_CATEGORY = "database"
-
-# Load config files
-CONFIG = network.CONFIG
-STRINGS = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.STRINGS)
-SERVER_CONFIG = config_handler.ConfigHandler(conf_type=config_handler.ConfigHandler.SERVER)
-
-# Load protocol configs
-SERVER_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "server_hello")
-CLIENT_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "client_hello")
-ADMIN_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "admin_hello")
-INJECTOR_HELLO = network.CONFIG.get(PROTOCOL_CATEGORY, "injector_hello")
-
-SOCKET_CLOSE_DATA = network.CONFIG.get(PROTOCOL_CATEGORY, "socket_close").decode('string_escape')
-
-# Load proto codes configs
-PROTOCOL_STATUS_CODES = {"ok": network.CONFIG.getint(PROTO_CODES, "ok"),
-                         "error": network.CONFIG.getint(PROTO_CODES, "error"),
-                         "incident_info": network.CONFIG.getint(PROTO_CODES, "incident_info"),
-                         "authentication": network.CONFIG.getint(PROTO_CODES, "authentication"),
-                         "get_rules": network.CONFIG.getint(PROTO_CODES, "get_rules")
-                         }
-
-# Load server configs
-SERVER_PORT = SERVER_CONFIG.get(NETWORK_CATEGORY, "port")
-INCIDENTS_FILE = SERVER_CONFIG.get("default", "incidents_file")
-MAX_RECV = SERVER_CONFIG.getint(NETWORK_CATEGORY, "recv_buffer_size")
-
-# Load database configs
-DATABASE_NAME = SERVER_CONFIG.get(DATABASE_CATEGORY, "filename")
-DATABASE_STRUCTURE_FILENAME = SERVER_CONFIG.get(DATABASE_CATEGORY, "structure")
+from server_config import *
+import database_handler
+import hashlib
+import time
 
 
-class DatabaseHandler:
-    def __init__(self, lock):
-        self.db = sqlite3.connect(DATABASE_NAME, check_same_thread=False)
-        self.create_tables()
-        self.lock = lock
+def read_log_file(filename):
+    content = "Couldn't load log file"
+    try:
+        with open(filename, 'r') as thefile:
+            content = thefile.read()
+    except Exception as e:
+        LOGGER.error("Couldn't read log file")
+    finally:
+        return content
 
-    def create_tables(self):
+
+class AdminAuthentication:
+    def __init__(self, client, db):
+        """
+        Authenticates an administrator
+
+        :param client:
+        :type client: ClientHandler
+        :param db:
+        :type db: database_handler.DatabaseHandler
+        """
+        self.client = client
+        self.credentials = None
+        self.db = db
+
+    def run(self, message):
+        """
+        Runs the appropriate sequence for admin authentication
+
+        :param message: Admin message containing credentials
+        """
+        if self.parse_response(message):
+            if self.validate_credentials():
+                self.client.change_auth_status(self.client.auth_statuses["auth_complete"])
+            else:
+                LOGGER.warning("Username, password or unique id incorrect at client: {client}".format(
+                    client=str(self.client)))
+                return
+        else:
+            LOGGER.warning("Error receiving admin credentials: {client}".format(
+                client=str(self.client)))
+            return
+
+    def parse_response(self, response):
+        """
+        Parses the client credentials into a status code and a json object.
+
+        :param response: Full response from client (contains status code and json data)
+        :type response: str
+        :return: If response is ok and parsed successfully
+        :rtype: bool
+        """
+        error_msg = str(PROTOCOL_STATUS_CODES["error"]) + " Error in authentication(protocol error), Try again."
+        if response.find(" ") == -1:
+            self.client.send(error_msg)
+            return False
+
+        status, credentials = response.split(" ", 1)
+        if not status.isdigit() and int(status) == 1:
+            self.client.send(error_msg)
+            return False
+
         try:
-            with open(DATABASE_STRUCTURE_FILENAME) as f:
-                structure = json.load(f)
+            credentials_dict = json.loads(credentials)
+        except Exception as e:
+            self.client.send(error_msg)
+            return False
 
-        except:
-            LOGGER.error("Couldn't open database structure file: {file}".format(file=DATABASE_STRUCTURE_FILENAME))
-            exit()
+        if "username" not in credentials_dict or "password" not in credentials_dict:
+            self.client.send(error_msg)
+            return False
 
-        for table in structure:
-            query = "create table if not exists {table} ({structure})"
-            structure_query = []
-            for key, type in structure[table].iteritems():
-                structure_query.append("{key} {type}".format(key=key, type=type))
-            query = query.format(table=table, structure=",".join(structure_query))
-            self.db.execute(query)
+        self.credentials = credentials_dict
+        return True
 
-    def insert_data(self, table, fields, values):
-        self.lock.acquire()
-        query = "INSERT INTO {table}({fields}) VALUES ({questions})".format(table=table, fields=",".join(fields), questions=",".join("?" for x in xrange(len(values))))
-        cursor = self.db.cursor()
-        cursor.execute(query, values)
-        self.db.commit()
-        self.lock.release()
+    def validate_credentials(self):
+        """
+        Validates the admin credentials (uId, username, password) with the database
 
-    def update_data(self, table, fields, values, id_name, id_value):
-        self.lock.acquire()
-        # set_data_string = ",".join(["{key}={value}".format(key=item[0], value=item[1])for item in zip(fields, values)])
+        :return: If credentials are matching the database
+        :rtype: bool
+        """
+        admin_info = self.db.get_data("admins", "uId", self.credentials["uId"])
+        response_text = "Username or password incorrect, try again."
+        if admin_info is None or len(admin_info) == 0:
+            response_text = "You cannot login as administrator from this computer. (unique id incorrect)"
+            self.client.send(
+                str(PROTOCOL_STATUS_CODES["error"]) + " Error in authentication, {message}".format(
+                    message=response_text))
+            return
+        admin_info = admin_info[0]
 
-        set_data_string = ",".join("{key}=?".format(key=item) for item in fields)
-
-        query = "UPDATE {table} set {data} WHERE {idname} = ?".format(table=table, data=set_data_string,
-                                                                      idname=id_name)
-        cursor = self.db.cursor()
-        cursor.execute(query, values + [id_value])
-        self.db.commit()
-
-        self.lock.release()
-
-    def add_incident(self, incident_info):
-        pass
-
-    def new_connection(self, type, addr, uid, time, auth_status):
-        self.insert_data("connections", ["uId", "userType", "address", "connectionTime", "authenticated"],
-                         [uid, type, addr, time, auth_status])
-
-    def set_connection_auth_state(self, uid, state):
-        self.update_data("connections", ["authenticated"], [state], "uId", uid)
-
-    def add_rule(self, rule_info):
-        pass
-
-    def delete_rule(self, rule_id):
-        pass
-
-    def modify_rule(self, rule_id, rule_info):
-        pass
-
-    def get_incidents(self):
-        pass
-
-    def get_rules(self):
-        pass
-
-    def get_connections(self):
-        pass
+        salt = admin_info["salt"]
+        db_pass = admin_info["password"]
+        db_username = admin_info["username"]
+        password = self.credentials["password"]
+        new_hashed = hashlib.sha512(password + salt)
+        if db_pass == new_hashed.hexdigest() and db_username.lower() == self.credentials["username"].lower():
+            self.client.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Authenticated successfully.")
+            self.client.uid = self.credentials["uId"]
+            return True
+        else:
+            self.client.send(
+                str(PROTOCOL_STATUS_CODES["error"]) + " Error in authentication, {message}".format(
+                    message=response_text))
+            return False
 
 
 class Server(object):
+    """
+    The main server, responsible connecting all of the peaces together.
+    Responsible for accepting clients and sending them to the appropriate procedure.
+    """
+
     def __init__(self):
         super(Server, self).__init__()
         self.client_list = []
-        self.db = DatabaseHandler(threading.Lock())
+        self.db = database_handler.DatabaseHandler(threading.Lock())
         self.client_messages = Queue.Queue()
         self.server_socket = network.network_base.NetworkBase()
+
         self.init_server_socket(int(SERVER_PORT))
+
+        if os.path.isfile(ADMIN_LIST_FILENAME):
+            pass
+
         accept_th = self.start_accepting()
         message_th = self.handle_messages()
         accept_th.join()
@@ -139,16 +144,30 @@ class Server(object):
             client.join()
 
     def init_server_socket(self, port):
+        """
+        Binds the server to the desired port.
+
+        :param port: desired port
+        """
         self.server_socket.bind(str(port))
         self.server_socket.listen(5)
 
     def start_accepting(self):
+        """
+        Starts a thread for accepting clients
+
+        :return: Thread which accept clients in a loop
+        :rtype: threading.Thread
+        """
         accept_th = threading.Thread(target=self.accept_clients)
         accept_th.daemon = True
         accept_th.start()
         return accept_th
 
     def accept_clients(self):
+        """
+        Accept new client (designed to run in a thread)
+        """
         while True:
             client_socket, client_addr = self.server_socket.accept()
             client = ClientHandler(client_socket, self.client_messages, self, client_addr, self.db)
@@ -158,12 +177,21 @@ class Server(object):
             client.start()
 
     def handle_messages(self):
+        """
+        Starts a thread for client messages interpretation
+        :return: Thread which interprets messages according to the protocol
+        :rtype: threading.Thread
+        """
         message_th = MessageHandler(self.client_messages, self)
         message_th.daemon = True
         message_th.start()
         return message_th
 
     def remove_client(self, client):
+        """
+        Remove client from the server
+        :param client: Client to kill
+        """
         if client in self.client_list:
             LOGGER.info("Client removed: {uid}".format(uid=client.uid))
             client.kill()
@@ -171,12 +199,24 @@ class Server(object):
 
 
 class ClientHandler(threading.Thread):
+    """
+    Created for every client, responsible for every communication with the client, authentication and more.
+    """
     auth_statuses = {"auth_no": SERVER_CONFIG.getint("default", "auth_no"),
                      "auth_ok": SERVER_CONFIG.getint("default", "auth_ok"),
                      "auth_complete": SERVER_CONFIG.getint("default", "auth_complete")}
     client_types = {"unknown": -1, "hook": 0, "injector": 1, "admin": 2}
 
     def __init__(self, client_socket, client_messages, server, client_addr, db):
+        """
+
+        :param client_socket:
+        :param client_messages:
+        :param server:
+        :param client_addr:
+        :param db:
+        :type db: database_handler.DatabaseHandler
+        """
         super(ClientHandler, self).__init__()
         self.db = db
         self.client_socket = client_socket
@@ -193,6 +233,10 @@ class ClientHandler(threading.Thread):
         self.db.new_connection(self.client_type, self.addr, self.uid, datetime.datetime.now(), self.authenticated)
 
     def run(self):
+        """
+        Receive new message and put it in the stack
+        :rtype: None
+        """
         while True:
             if self.__kill.is_set():
                 thread.exit()
@@ -204,30 +248,63 @@ class ClientHandler(threading.Thread):
         return
 
     def closed_socket(self, data):
+        """
+        Remove client from server if it has disconnected
+        :param data:
+        :return:
+        """
         if data == SOCKET_CLOSE_DATA:
             self.server.remove_client(self)
             return True
         return False
 
     def send(self, data):
-        self.client_socket.send(str(data))
+        try:
+            self.client_socket.send(str(data))
+        except Exception as e:
+            LOGGER.error("Error sending data to client [{error}]".format(e.message))
 
     def is_auth(self):
+        """
+        Check if client has fully authenticated
+        :return: Weather the client is authenticated
+        :rtype: bool
+        """
         return self.authenticated == self.auth_statuses["auth_complete"]
 
     def kill(self):
+        """
+        Kill client
+        """
         self.__kill.set()
 
-    def authenticate_admin(self, message):
-        pass
+    def change_auth_status(self, new_status):
+        """
+        Change the client authentication step
+        :param new_status: The new authentication step
+        """
+        LOGGER.info("Client {client} authentication status has changed to state: {state}".format(client=str(self),
+                                                                                                 state=new_status))
+        self.authenticated = new_status
+        self.db.update_data("connections", ["userType", "authenticated"], [self.client_type, self.authenticated], "uId",
+                            self.uid)
+        if new_status == self.auth_statuses["auth_complete"]:
+            LOGGER.info(
+                "Client {client} has authenticated successfully".format(client=str(self)))
 
     def authenticate(self, message):
+        """
+        Main function for authenticating a client. Same function for all client types.
+        Calls the appropriate function for authentication.
+        :param message: Client message (authentication step)
+        :rtype: None
+        """
         if self.authenticated == self.auth_statuses["auth_complete"]:
             return
 
         if not self.is_auth() and message.strip() in [CLIENT_HELLO, INJECTOR_HELLO, ADMIN_HELLO]:
-            self.client_socket.send(SERVER_HELLO)
-            self.authenticated = self.auth_statuses["auth_ok"]
+            self.change_auth_status(self.auth_statuses["auth_ok"])
+            self.send(SERVER_HELLO)
             if message.strip() == CLIENT_HELLO:
                 self.client_type = self.client_types["hook"]
             elif message.strip() == INJECTOR_HELLO:
@@ -236,99 +313,200 @@ class ClientHandler(threading.Thread):
                 self.client_type = self.client_types["admin"]
             return
 
-        self.db.update_data("connections", ["userType", "authenticated"], [self.client_type, self.authenticated], "uId", self.uid)
-
         if self.client_type == self.client_types["admin"]:
-            self.authenticate_admin()
+            admin = AdminAuthentication(self, self.db)
+            admin.run(message)
             return
 
         if self.authenticated == self.auth_statuses["auth_ok"]:
             response = message.splitlines()
             self.status, uid = response[0].strip().split(" ")
-            if int(self.status) != PROTOCOL_STATUS_CODES["authentication"]:
+            if int(self.status) != (PROTOCOL_STATUS_CODES["authentication"]):
                 return
-            self.authenticated = self.auth_statuses["auth_complete"]
-            self.db.update_data("connections", ["uId", "authenticated"], [uid,self.authenticated], "uId", self.uid)
+
+            self.change_auth_status(self.auth_statuses["auth_complete"])
             self.uid = uid
-            # TODO: check if client already runs.
 
-            response = response[1:]
-            if len(response) > 0:
-                for line in response:
-                    key_end = line.find(":")
-                    if key_end > 0:
-                        key = response[0:key_end]
-                        value = response[key_end + 1:].strip()
-                        self.client_info[key] = value
-
-            self.send(PROTOCOL_STATUS_CODES["ok"])
+            self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Authentication complete")
             LOGGER.info("{client_info} has authenticated".format(client_info=self))
             return
         return
 
     def new_incident(self, incident):
-        if os.path.isfile(INCIDENTS_FILE):
-            with open(INCIDENTS_FILE, 'r') as f:
-                current_incidents = json.loads(f.read())
-        else:
-            current_incidents = {}
-
-        with open(INCIDENTS_FILE, 'w') as f:
-            if self.uid in current_incidents:
-                current_incidents[self.uid] += [incident]
-            else:
-                current_incidents[self.uid] = [incident]
-            f.write(json.dumps(current_incidents, indent=4))
+        """
+        Called when the client perform an illegal action.
+        :param incident: incident info
+        :type incident: dict
+        """
+        self.db.add_incident(incident, self.uid)
+        LOGGER.info("New incident at " + self.addr)
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Incident added successfully")
+        # TODO: Alert admin
 
     def send_rules(self):
+        """
+        Send the rules requested by the client
+        """
         if self.client_type == self.client_types["hook"]:
-            pass
+            self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(self.db.get_rules()))
         elif self.client_type == self.client_types["injector"]:
-            self.send("{\"inject_to\":[\"notepad++.exe\", \"firefox.exe\"]}")
+            processes_black_list = list(set([rule["processName"] for rule in self.db.get_rules()]))
+            black_list_by_proto = {"inject_to": processes_black_list}
+            self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(black_list_by_proto))
         elif self.client_type == self.client_types["admin"]:
-            pass
+            self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(self.db.get_rules()))
+        LOGGER.info("Rules sent successfully to client: {client}".format(client=str(self)))
+
+    def validate_rule(self, rule, must_fields=[]):
+        if self.client_type != self.client_types["admin"]:
+            LOGGER.warning(
+                "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
+            return False
+        try:
+            rule = json.loads(rule)
+        except Exception as e:
+            LOGGER.error("Error with with rule structure, problem loading json: {msg}".format(e.message))
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " RULE STRUCTURE INCORRECT")
+            return False
+        for item in must_fields:
+            if item not in rule:
+                LOGGER.error("Rule structure is incorrect {client}".format())
+                self.send(str(PROTOCOL_STATUS_CODES["error"]) + " RULE STRUCTURE INCORRECT")
+                return False
+        return True
+
+    def add_rule(self, rule):
+        """
+        Adds a new rule to the database
+
+        :param rule: rule data in JSON format
+        :type rule: str
+        """
+        if not self.validate_rule(rule, ["processName", "ruleType", "actionToTake", "ruleContent"]):
+            return
+        rule = json.loads(rule)
+        self.db.add_rule(rule)
+        LOGGER.info("New rule added to database by {client}.".format(client=str(self)))
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule added successfully")
+
+    def protocol_error(self, msg=""):
+        self.send(
+            str(PROTOCOL_STATUS_CODES["error"]) + " Error interpreting request (protocol error){msg}".format(
+                msg=": " + msg))
+
+    def update_rule(self, rule):
+        if not self.validate_rule(rule, ["processName", "ruleType", "actionToTake", "ruleContent", "id"]):
+            return
+
+        rule = json.loads(rule)
+        self.db.modify_rule(rule["id"], rule)
+        LOGGER.info("Rule #{id} modified successfully by {client}.".format(id=rule["id"], client=str(self)))
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule #{id} modified successfully".format(id=rule["id"]))
+
+    def send_log(self, info):
+        if self.client_type != self.client_types["admin"]:
+            LOGGER.warning(
+                "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
+            return False
+        log_files = {"server": "server.log", "network": "network.log"}
+        if info not in log_files.keys():
+            LOGGER.error("Log file requested does not exist! ({file})".format(file=info))
+            return
+        log_content = read_log_file(log_files[info])
+        data_to_send = str(PROTOCOL_STATUS_CODES["ok"]) + " " + log_content
+        LOGGER.info(
+            "Log file ({file}) sent to client successfully -> {client}".format(file=log_files[info], client=str(self)))
+        self.send(data_to_send)
+
+    def remove_rule(self, rule):
+        if not self.validate_rule(rule, ["id"]):
+            return
+        rule = json.loads(rule)
+        self.db.delete_rule(rule["id"])
+        LOGGER.info("Rule #{id} removed successfully by {client}.".format(id=rule["id"], client=str(self)))
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule #{id} removed successfully".format(id=rule["id"]))
+
+    def send_connection_history(self):
+        if self.client_type != self.client_types["admin"]:
+            LOGGER.warning(
+                "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
+            return
+        LOGGER.info("Connections history sent successfully to client: {client}".format(client=str(self)))
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(self.db.get_connections()))
+
+    def send_incidents_history(self):
+        if self.client_type != self.client_types["admin"]:
+            LOGGER.warning(
+                "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
+            return
+        LOGGER.info("Incidents history sent successfully to client: {client}".format(client=str(self)))
+        self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(self.db.get_incidents()))
 
     def __str__(self):
-        if self.is_auth():
-            return "{type} [Address: {address} | UID: {uid}]".format(address=self.addr, uid=self.uid,
-                                                                     type=self.client_types.keys()[
-                                                                         self.client_types.values().index(
-                                                                                 self.client_type)])
+        if self.uid != self.addr:
+            return "{type} | {address} | {uid}".format(address=self.addr, uid=self.uid,
+                                                       type=self.client_types.keys()[
+                                                           self.client_types.values().index(
+                                                               self.client_type)])
         else:
-            return "Client {address} is not authenticated".format(address=self.addr)
+            return "{type} | {address}".format(address=self.addr,
+                                               type=self.client_types.keys()[
+                                                   self.client_types.values().index(
+                                                       self.client_type)])
 
 
 class MessageHandler(threading.Thread):
     def __init__(self, client_messages, server):
         super(MessageHandler, self).__init__()
         self.client_messages = client_messages
-        self.server = server
 
     def run(self):
         while True:
             self.interpret_message(self.client_messages.get())
 
-    def interpret_message(self, message):
+    @staticmethod
+    def interpret_message(message):
         client, data = message
         if not client.is_auth():
             client.authenticate(data)
             return
 
         if data.find(" ") == -1:
-            if data.isnumeric():
+            if data.isdigit():
                 status = int(data)
             else:
                 return
         else:
-            status = int(data.split(" ")[0])
+            try:
+                status, info = data.split(" ", 1)
+                info = info.strip()
+                if status.isdigit():
+                    status = int(status)
+                else:
+                    LOGGER.warning(
+                        "Protocol error in client {client}. Message: {msg}".format(client=str(client), msg=data))
+                    client.protocol_error("Couldn't find request status code")
+
+                    return
+            except Exception as e:
+                LOGGER.warning("Protocol error in client {client}. Message: {msg}".format(client=str(client), msg=data))
+                client.protocol_error(str(e.args))
+                return
 
         if status == PROTOCOL_STATUS_CODES["incident_info"]:
-            incident_information = json.loads(data[data.find(" "):])
+            incident_information = json.loads(info)
             client.new_incident(incident_information)
-            client.send(PROTOCOL_STATUS_CODES["ok"])
         elif status == PROTOCOL_STATUS_CODES["get_rules"]:
             client.send_rules()
-
-
-if __name__ == "__main__":
-    Server()
+        elif status == PROTOCOL_STATUS_CODES["add_rule"]:
+            client.add_rule(info)
+        elif status == PROTOCOL_STATUS_CODES["update_rule"]:
+            client.update_rule(info)
+        elif status == PROTOCOL_STATUS_CODES["delete_rule"]:
+            client.remove_rule(info)
+        elif status == PROTOCOL_STATUS_CODES["get_log"]:
+            client.send_log(info)
+        elif status == PROTOCOL_STATUS_CODES["get_connection_history"]:
+            client.send_connection_history()
+        elif status == PROTOCOL_STATUS_CODES["get_incident_history"]:
+            client.send_incidents_history()

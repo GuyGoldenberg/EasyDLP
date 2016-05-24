@@ -1,12 +1,10 @@
 # coding=utf-8
-# TODO: Create a logger
 
 import ctypes
 import logger
 from network import DLL_PATH, STRINGS
 
-LOGGER = logger.Logger("networkLogger")
-
+LOGGER = None
 
 class NetworkError(Exception):
     def __init__(self, id, name):
