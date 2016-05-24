@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="LoggingLib">
+      <UniqueIdentifier>{65543d3a-8952-4932-8668-6492129be249}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -26,6 +29,24 @@
     </ClInclude>
     <ClInclude Include="network_lib.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Init.h">
+      <Filter>LoggingLib</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Log.h">
+      <Filter>LoggingLib</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Logger.h">
+      <Filter>LoggingLib</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Record.h">
+      <Filter>LoggingLib</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Severity.h">
+      <Filter>LoggingLib</Filter>
+    </ClInclude>
+    <ClInclude Include="LoggingLib\Util.h">
+      <Filter>LoggingLib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

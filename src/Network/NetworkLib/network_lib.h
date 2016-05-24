@@ -27,13 +27,14 @@ private:
 	char * ip;
 	char * port;
 	typedef enum log_levels { error, warning, info, debug } log_level;
-	void logMessages(const char *message, log_level level) { MessageBoxA(NULL, message, NULL, NULL); }; // TODO Create a logging module and implement here.
-	void logMessages(const string message, log_level level) { MessageBoxA(NULL, message.c_str(), NULL, NULL); }; // TODO Create a logging module and implement here.
+	//void logMessages(const char *message, log_level level)
+	void logMessages(const char* message, log_level level);
 
 public:
 	typedef enum return_codes { success = 0, wsastrartup_error = 1, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error, nullptr_error, settimeout_error } return_code;
 	NetworkBase(void);
 	NetworkBase(SOCKET &sock);
+	~NetworkBase();
 	return_code socketInit();
 	return_code connect(const char* serverAddress, const char * port);
 	void setInfo(const char*  ip, const char*  port);
@@ -127,7 +128,6 @@ extern "C"{
 		if (netBase == nullptr || netBase == 0) return "";
 		const char * ip = netBase->getIP();
 		const char * port = netBase->getPort();
-		MessageBoxA(0,port,0,0);
 		string fullAddr = string(ip) + string(":") + string(port);
 		return _strdup(fullAddr.c_str());
 	}

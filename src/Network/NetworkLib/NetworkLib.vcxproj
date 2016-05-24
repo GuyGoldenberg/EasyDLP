@@ -48,11 +48,12 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;NETWORKLIB_EXPORTS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>C:\Users\Guy\Documents\EasyDLP\src\Network\NetworkLib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -80,6 +81,12 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LoggingLib\Init.h" />
+    <ClInclude Include="LoggingLib\Log.h" />
+    <ClInclude Include="LoggingLib\Logger.h" />
+    <ClInclude Include="LoggingLib\Record.h" />
+    <ClInclude Include="LoggingLib\Severity.h" />
+    <ClInclude Include="LoggingLib\Util.h" />
     <ClInclude Include="network_lib.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
