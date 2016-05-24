@@ -1,6 +1,7 @@
 #pragma region Includes
 #include "stdafx.h"
 #include "Injector.h"
+#include <cstring>
 #pragma endregion
 
 using namespace std;
@@ -45,6 +46,8 @@ HMODULE Injector::GetModuleHandleByName(HANDLE hProcess, const char *modName)
 
 }
 
+
+
 void Injector::Detach(HANDLE hProcess, const char *modulePath)
 {
 	HMODULE hKernel32 = GetModuleHandle(__TEXT("Kernel32"));
@@ -83,7 +86,7 @@ bool Injector::Inject( HANDLE hProcess )
 		pathToInject = joinPath(getWorkingPath(), dllName);
 		// Allocate memory for the dll path
 		cout << "\t*Allocating memory for " << to_string(pathToInject.size()) << " bytes in " << processName << endl;
-		pLibRemote = VirtualAllocEx(hProcess, NULL, sizeof(pathToInject.c_str()), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		pLibRemote = VirtualAllocEx(hProcess, NULL, pathToInject.length(), MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 		cout << "\t*Memory allocated at " << pLibRemote << endl;
 		if( pLibRemote == NULL )
 			return false;
@@ -106,12 +109,14 @@ bool Injector::Inject( HANDLE hProcess )
 		// TODO Handle a thread error by identifying the thread exit code
 
 		GetExitCodeThread( hThread, &hLibModule );
-		if (hLibModule == 0)
+		if (hLibModule != 0)
 		{
 
-			cout << "\t*"<< dllName << " injected successfully to " << processName << " at " << pLibRemote << "\r\n" <<endl;
+			cout << "\t*" << dllName << " injected successfully to " << processName << " at " << pLibRemote << "\r\n" << endl;
 
 		}
+		else
+			cout << "\t* Injection error!" << endl;
 		CloseHandle(hThread);
 
 	}

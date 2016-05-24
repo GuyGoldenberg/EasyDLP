@@ -12,9 +12,10 @@ private:
 	char * createUid();
 
 public:
-	ServerHandler();
+	ServerHandler(string ip, string port);
 	~ServerHandler();
 	bool authenticate();
+	int authenticate(bool);
 	set<string>* getRules();
 };
 

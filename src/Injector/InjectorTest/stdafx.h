@@ -8,3 +8,5 @@
 #include <tlhelp32.h>
 #include <string>
 #include <iostream>
+#include "plog/Log.h"
+#include "ConfigLib\simpleIni.h"

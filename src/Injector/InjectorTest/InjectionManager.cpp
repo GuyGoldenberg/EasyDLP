@@ -20,6 +20,35 @@ void InjectionManager::setDllsToInject(vector<string> dllsToInject)
 	this->dllPathVector = dllsToInject;
 }
 
+
+vector<string> InjectionManager::listDirectory(string path)
+{
+
+	vector<string> names;
+	char search_path[260];
+	wchar_t wtext[260];
+
+	sprintf(search_path, "%s\\*.*", path.c_str());
+	WIN32_FIND_DATA fd;
+	mbstowcs(wtext, search_path, strlen(search_path) + 1);//Plus null
+	LPWSTR ptr = wtext;
+	wstring resultWide;
+	HANDLE hFind = ::FindFirstFile(wtext, &fd);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+
+			if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+				resultWide.assign(fd.cFileName);
+				names.push_back(path + string(resultWide.begin(), resultWide.end()));
+			}
+		} while (::FindNextFile(hFind, &fd));
+		::FindClose(hFind);
+	}
+	return names;
+
+
+}
+
 void InjectionManager::joinThread(){ this->pThread->join(); }
 
 void InjectionManager::killThread() { this->endThread = true; }
@@ -106,9 +135,21 @@ void InjectionManager::injectAll()
 
 				if (this->proccessesBlackList.find(str) != this->proccessesBlackList.end())
 				{
+
 					hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, entry.th32ProcessID);
+					int pid = GetProcessId(hProcess);
+					if (this->timeInjected.find(pid) == this->timeInjected.end())
+						this->timeInjected[pid] = 0;
+
+
 					if (!alreadyInjected(hProcess))
-						int res = this->Inject(hProcess);
+					{
+						if (this->timeInjected[pid] < 4)
+							int res = this->Inject(hProcess);
+						this->timeInjected[pid] = this->timeInjected[pid] + 1;
+						
+							
+					}
 					CloseHandle(hProcess);
 				}
 			}

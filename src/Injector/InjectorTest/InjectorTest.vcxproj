@@ -54,20 +54,26 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>false</ExceptionHandling>
       <UseFullPaths>true</UseFullPaths>
+      <BrowseInformation>true</BrowseInformation>
+      <AdditionalIncludeDirectories>C:\Users\Guy\Documents\EasyDLP\src\Injector\InjectorTest;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <Bscmake>
+      <PreserveSbr>true</PreserveSbr>
+    </Bscmake>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>Create</PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Users\Guy\Documents\EasyDLP\src\Injector\InjectorTest\JsonLib\json;C:\Users\Guy\Documents\EasyDLP\src\Injector\InjectorTest;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -77,12 +83,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ConfigLib\cpp\simpleIni.h" />
     <ClInclude Include="Injector.h" />
     <ClInclude Include="InjectionManager.h" />
     <ClInclude Include="JsonLib\json\json-forwards.h" />
     <ClInclude Include="JsonLib\json\json.h" />
     <ClInclude Include="md5.h" />
     <ClInclude Include="NetworkLib\network_lib.h" />
+    <ClInclude Include="plog\Init.h" />
+    <ClInclude Include="plog\Log.h" />
+    <ClInclude Include="plog\Logger.h" />
+    <ClInclude Include="plog\Record.h" />
+    <ClInclude Include="plog\Severity.h" />
+    <ClInclude Include="plog\Util.h" />
     <ClInclude Include="ServerHandler.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>

@@ -15,7 +15,6 @@ class Injector
 protected:
 	vector<string> dllPathVector;
 
-
 private:
 	//const char * HOOK_DLL_PATH;
 	HMODULE GetModuleHandleByName(HANDLE, const char *);

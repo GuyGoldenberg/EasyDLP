@@ -8,11 +8,12 @@ class InjectionManager : public Injector
 {
 private:
 	set<string> proccessesBlackList;
+	map<int, int> timeInjected;
+
 	thread *pThread;
 	bool endThread;
 	bool alreadyInjected(HANDLE hProcess);
 	unsigned int sleepTime;
-
 
 public:
 	InjectionManager();
@@ -25,6 +26,8 @@ public:
 	void killThread();
 	void joinThread();
 	void addDll(string dllPath);
+	vector<string> InjectionManager::listDirectory(string path);
+
 };
 
 

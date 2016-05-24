@@ -19,6 +19,12 @@
     <Filter Include="Header Files\JsonLib">
       <UniqueIdentifier>{98598a50-7a27-4fe0-adac-efe3b2aa9928}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\ConfigLib">
+      <UniqueIdentifier>{9b1380bb-82da-46b3-815f-3abbff18dcf2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\plog">
+      <UniqueIdentifier>{1b252d37-2a55-45e7-ab40-6b00ef8e90a1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -44,6 +50,27 @@
     </ClInclude>
     <ClInclude Include="md5.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Init.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Log.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Logger.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Record.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Severity.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="plog\Util.h">
+      <Filter>Header Files\plog</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfigLib\cpp\simpleIni.h">
+      <Filter>Header Files\ConfigLib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
