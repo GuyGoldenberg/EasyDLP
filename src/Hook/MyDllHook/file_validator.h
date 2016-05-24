@@ -11,14 +11,14 @@ private:
 
 public:
 	fileValidator(string filePath);
-	fileValidator();
+	fileValidator(){};
 	~fileValidator();
 	
 	bool isInPath(string basePath);
 	bool isInPath(vector<string> basePath);
 
-	bool compareFileHash(string hash);
-	bool compareFileHash(vector<string> hashes);
+	bool compareFileHash(string hash){ throw exception(); return true; };
+	bool compareFileHash(vector<string> hashes){ throw exception(); return true; };
 
 	void setFilePath(string filePath);
 

@@ -23,7 +23,7 @@
 #elif defined _M_X64
 #define _M_IX86_X64
 #endif
-
+class Mhook{};
 BOOL Mhook_SetHook(PVOID *ppSystemFunction, PVOID pHookFunction);
 BOOL Mhook_Unhook(PVOID *ppHookedFunction);
 

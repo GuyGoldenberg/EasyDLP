@@ -5,8 +5,39 @@
 #include <Lmcons.h>
 #include "NetworkLib\network_lib.h"
 
+CreateFileValidator *crValidator;
+
 Hook::Hook(){
+	crValidator = new CreateFileValidator();
 };
+
+
+string Hook::fullRecv()
+{
+	string data;
+	string temp;
+	while (true)
+	{
+		temp = string(this->sock->recv(1024));
+		if (temp.length() < 1024)
+			return temp;
+		data += temp;
+	}
+
+}
+
+void Hook::getRules()
+{
+
+	this->sock->send("5 GET RULES");
+	string rules = this->fullRecv();
+	string status;
+	istringstream rulesStream(rules);
+	getline(rulesStream, status, ' ');
+	getline(rulesStream, rules);
+	crValidator->setRules(rules);
+
+}
 
 void Hook::sendIncident(string data)
 {
@@ -20,11 +51,12 @@ void Hook::connectToServer()
 
 	this->sock->socketInit();
 	this->sock->connect("127.0.0.1", "5050");
-	
 	this->sock->send("CLIENT HELLO");
-	string response = string(this->sock->recv(1024));
+
+	char * response = (this->sock->recv(1024));
 	this->sock->send((string("1 ") + string(md5(string(this->createUid())))).c_str());
 	this->sock->recv(1024);
+	this->getRules();
 }
 
 _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L"kernel32"), "CreateFileW");
@@ -100,11 +132,13 @@ void sendIncident(string inc)
 
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
-	
+
+	// Use global CreateFileValidator object
 	string filePath;
 	stringValidator fValidator;
 	filePath = Encode(lpFileName, CP_UTF8); //UTF-8 encoding
-	if (fValidator.endsWith(filePath, ".ddd"))
+	int id = crValidator->Validate(filePath);
+	if (id != -1)
 	{
 		TCHAR szEXEPath[2048];
 		char applicationPath[2048];
@@ -125,6 +159,7 @@ HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPS
 		incident["actionTaken"] = 1;
 		incident["fileTried"] = filePath;
 		incident["appPath"] = applicationPath;
+		incident["ruleId"] = id;
 		ostringstream inc;
 		inc << incident;
 		string json = inc.str();
@@ -144,7 +179,6 @@ void Hook::disconnectServer()
 bool Hook::setHook()
 {
 	this->connectToServer();
-	MessageBoxA(0, "Setting hook", 0, 0);
 	BOOL hookResult = Mhook_SetHook((PVOID*)&this->TrueCreateFile, (PVOID)(Hook::SecuredCreateFile));
 	if (!hookResult)
 	{

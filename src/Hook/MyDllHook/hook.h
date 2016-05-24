@@ -6,6 +6,7 @@
 #include "md5.h"
 #include "HookLib\\mhook.h"
 #include "JsonLib\\json\\json.h"
+#include "CreateFileValidator.h"
 #include "NetworkLib\\network_lib.h"
 #pragma comment(lib, "NetworkLib\\network_lib.lib")
 #pragma comment(lib, "crypt32.lib")
@@ -52,6 +53,8 @@ private:
 		return (char *)DataOut.pbData;
 
 	}
+	string fullRecv();
+	void getRules();
 
 public:
 	Hook();

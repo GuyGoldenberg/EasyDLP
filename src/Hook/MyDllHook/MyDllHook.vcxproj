@@ -110,8 +110,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CreateFileValidator.h" />
     <ClInclude Include="file_validator.h" />
-    <ClInclude Include="Incident.h" />
     <ClInclude Include="JsonLib\json\json-forwards.h" />
     <ClInclude Include="JsonLib\json\json.h" />
     <ClInclude Include="md5.h" />
@@ -128,9 +128,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CreateFileValidator.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="file_validator.cpp" />
-    <ClCompile Include="Incident.cpp" />
     <ClCompile Include="JsonLib\jsoncpp.cpp" />
     <ClCompile Include="md5.cpp" />
     <ClCompile Include="string_validator.cpp" />
@@ -145,6 +145,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Rel-64|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="validate_create_file.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

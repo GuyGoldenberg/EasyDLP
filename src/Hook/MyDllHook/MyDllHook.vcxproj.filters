@@ -72,7 +72,7 @@
     <ClInclude Include="md5.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Incident.h">
+    <ClInclude Include="CreateFileValidator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -113,7 +113,10 @@
     <ClCompile Include="md5.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
-    <ClCompile Include="Incident.cpp">
+    <ClCompile Include="validate_create_file.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CreateFileValidator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

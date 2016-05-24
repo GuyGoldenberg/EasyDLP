@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "hook.h"
-
+#include <string>
 
 char* Encode(const wchar_t* wstr, unsigned int codePage)
 {
@@ -17,7 +17,6 @@ BOOL APIENTRY DllMain( HMODULE hModule,
                        LPVOID lpReserved
 					 )
 {
-
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
