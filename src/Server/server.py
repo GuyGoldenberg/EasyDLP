@@ -138,6 +138,7 @@ class Server(object):
 
         accept_th = self.start_accepting()
         message_th = self.handle_messages()
+        LOGGER.info("The server is running on port {port}".format(port=SERVER_PORT))
         accept_th.join()
         message_th.join()
         for client in self.client_list:
@@ -209,12 +210,15 @@ class ClientHandler(threading.Thread):
 
     def __init__(self, client_socket, client_messages, server, client_addr, db):
         """
-
-        :param client_socket:
-        :param client_messages:
-        :param server:
-        :param client_addr:
-        :param db:
+        :param client_socket: The socket of the client as accepted
+        :type client_socket: network.network_base.NetworkBase
+        :param client_messages: A queue of messages to push messages to
+        :type client_messages: Queue.Queue
+        :param server: The server object
+        :type server: server.Server
+        :param client_addr: Client full address [ip:port]
+        :type client_addr: str
+        :param db: Database object
         :type db: database_handler.DatabaseHandler
         """
         super(ClientHandler, self).__init__()
@@ -235,7 +239,6 @@ class ClientHandler(threading.Thread):
     def run(self):
         """
         Receive new message and put it in the stack
-        :rtype: None
         """
         while True:
             if self.__kill.is_set():
@@ -243,9 +246,47 @@ class ClientHandler(threading.Thread):
                 return
             else:
                 data = self.client_socket.recv(MAX_RECV)
-                if not self.closed_socket(data):
+
+                data = self.receive_full_data(data)
+                if data is not None:
                     self.client_messages.put([self, data])
         return
+
+    def receive_full_data(self, data):
+        """
+        Designed to follow the protocol standard and receive messages from the client correctly.
+        This method helps splitting the received data into different client messages using the `content-length`
+
+        :param data: Message from the client, this message may be a some messages in the same variable
+        :type data: str
+        :return: Last message to push to the stack
+        """
+        length = None
+        if data.find(" ") == -1:
+            if not self.closed_socket(data):
+                return data
+
+        possible_length = data.split(" ")[0]
+        try:
+            possible_length_loaded = json.loads(possible_length)
+            if "content-length" in possible_length_loaded:
+                length = possible_length_loaded["content-length"]
+                data = data[len(possible_length) + 1:]
+        except:  # Don't care about the exception, probably ValueError.
+            return data
+
+        if length == len(data):
+            return data
+
+        if length < len(data):
+            return_data = data[0:length]
+            data = data[length:]
+            self.client_messages.put([self, return_data])
+            return self.receive_full_data(data)
+        if length > len(data):
+            data += self.client_socket.recv(length - len(data))
+            return data
+        return None  # If client disconnected
 
     def closed_socket(self, data):
         """
@@ -259,10 +300,17 @@ class ClientHandler(threading.Thread):
         return False
 
     def send(self, data):
+        """
+        Send data to the client.
+
+        :param data: Data to send
+        """
         try:
             self.client_socket.send(str(data))
         except Exception as e:
-            LOGGER.error("Error sending data to client [{error}]".format(e.message))
+            raise
+            LOGGER.error("Error sending data to client [{error}]".format(e.args))
+            return
 
     def is_auth(self):
         """
@@ -338,7 +386,15 @@ class ClientHandler(threading.Thread):
         :param incident: incident info
         :type incident: dict
         """
-        self.db.add_incident(incident, self.uid)
+        try:
+            incident_json = json.loads(incident)
+        except Exception as e:
+            LOGGER.error("Error loading incident information[{errmsg}], data received:{data}".format(errmsg=str(e.args),
+                                                                                                     data=incident))
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Incident structure incorrect. Try again")
+            return
+
+        self.db.add_incident(incident_json, self.uid)
         LOGGER.info("New incident at " + self.addr)
         self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Incident added successfully")
         # TODO: Alert admin
@@ -384,33 +440,70 @@ class ClientHandler(threading.Thread):
         """
         if not self.validate_rule(rule, ["processName", "ruleType", "actionToTake", "ruleContent"]):
             return
-        rule = json.loads(rule)
+        try:
+            rule = json.loads(rule)
+        except ValueError as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Error parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+        except Exception as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Unknown error while parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+
         self.db.add_rule(rule)
         LOGGER.info("New rule added to database by {client}.".format(client=str(self)))
         self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule added successfully")
 
     def protocol_error(self, msg=""):
+        """
+        Notify the client if a protocol error has occurred.
+        :param msg: Error information to send
+        """
         self.send(
             str(PROTOCOL_STATUS_CODES["error"]) + " Error interpreting request (protocol error){msg}".format(
                 msg=": " + msg))
 
     def update_rule(self, rule):
+        """
+        Update a rule in the database by the rule id
+        :param rule: A rule represented as a json dictionary
+        :type rule: str
+        """
         if not self.validate_rule(rule, ["processName", "ruleType", "actionToTake", "ruleContent", "id"]):
             return
 
-        rule = json.loads(rule)
+        try:
+            rule = json.loads(rule)
+        except ValueError as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Error parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+        except Exception as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Unknown error while parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+
         self.db.modify_rule(rule["id"], rule)
         LOGGER.info("Rule #{id} modified successfully by {client}.".format(id=rule["id"], client=str(self)))
         self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule #{id} modified successfully".format(id=rule["id"]))
 
     def send_log(self, info):
+        """
+        Send the log of the network module or the server to a client, must be an admin.
+
+        :param info: Which logging file the admin wants
+        :return:
+        """
         if self.client_type != self.client_types["admin"]:
             LOGGER.warning(
                 "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Unauthorized action")
             return False
         log_files = {"server": "server.log", "network": "network.log"}
         if info not in log_files.keys():
             LOGGER.error("Log file requested does not exist! ({file})".format(file=info))
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " The log file requested doesn't exist")
             return
         log_content = read_log_file(log_files[info])
         data_to_send = str(PROTOCOL_STATUS_CODES["ok"]) + " " + log_content
@@ -419,14 +512,32 @@ class ClientHandler(threading.Thread):
         self.send(data_to_send)
 
     def remove_rule(self, rule):
+        """
+        Remove a rule from the database based on the rule id
+        :param rule: A rule represented as a json dictionary
+        :type rule: str
+        """
         if not self.validate_rule(rule, ["id"]):
             return
-        rule = json.loads(rule)
+        try:
+            rule = json.loads(rule)
+        except ValueError as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Error parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+        except Exception as e:
+            self.send(str(PROTOCOL_STATUS_CODES["error"]) + " Error parsing rule. Try again.")
+            LOGGER.error("Unknown error while parsing rule: {errmsg}".format(errmsg=str(e.args)))
+            return
+
         self.db.delete_rule(rule["id"])
         LOGGER.info("Rule #{id} removed successfully by {client}.".format(id=rule["id"], client=str(self)))
         self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " Rule #{id} removed successfully".format(id=rule["id"]))
 
     def send_connection_history(self):
+        """
+        Send all of the table of connections history
+        """
         if self.client_type != self.client_types["admin"]:
             LOGGER.warning(
                 "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
@@ -435,6 +546,9 @@ class ClientHandler(threading.Thread):
         self.send(str(PROTOCOL_STATUS_CODES["ok"]) + " " + json.dumps(self.db.get_connections()))
 
     def send_incidents_history(self):
+        """
+        Send all of the table of incidents history
+        """
         if self.client_type != self.client_types["admin"]:
             LOGGER.warning(
                 "Client tried to perform operation without the appropriate permissions: {client}".format(str(self)))
@@ -461,11 +575,19 @@ class MessageHandler(threading.Thread):
         self.client_messages = client_messages
 
     def run(self):
+        """
+        Get a message from the client messages queue and send it to interpretation.
+        """
         while True:
             self.interpret_message(self.client_messages.get())
 
     @staticmethod
     def interpret_message(message):
+        """
+        Interprets a message according to the protocol status code
+        :param message: Message to interpret
+        :type message: str
+        """
         client, data = message
         if not client.is_auth():
             client.authenticate(data)
@@ -493,9 +615,9 @@ class MessageHandler(threading.Thread):
                 client.protocol_error(str(e.args))
                 return
 
+        # TODO: Transform this to a dictionary with status code as key and method pointer as value
         if status == PROTOCOL_STATUS_CODES["incident_info"]:
-            incident_information = json.loads(info)
-            client.new_incident(incident_information)
+            client.new_incident(info)
         elif status == PROTOCOL_STATUS_CODES["get_rules"]:
             client.send_rules()
         elif status == PROTOCOL_STATUS_CODES["add_rule"]:

@@ -2,6 +2,10 @@ from ConfigParser import SafeConfigParser
 
 
 class ConfigHandler(object, SafeConfigParser):
+    """
+    A config parser wrapper. Makes it easier to fetch config values
+
+    """
     CLIENT, SERVER, STRINGS = range(3)
 
 
@@ -11,6 +15,11 @@ class ConfigHandler(object, SafeConfigParser):
     CONFIG_FILENAME = "config.ini"
 
     def __init__(self, conf_type=None, section=None):
+        """
+
+        :param conf_type: Which config file to get data from
+        :param section:  Which section in the file to get data from
+        """
         SafeConfigParser.__init__(self)
         self.section = section
         if conf_type == ConfigHandler.CLIENT:
@@ -28,10 +37,20 @@ class ConfigHandler(object, SafeConfigParser):
             self.section_vars = None
 
     def save(self):
+        """
+        Save the configuration changed to the file
+        """
         with open(ConfigHandler.CONFIG_FILENAME, 'w') as f:
             self.write(f)
 
     def get(self, section=None, option=None, raw=False, vars=None):
+        """
+        Get a value from the config file
+        :param section: Section to get data from
+        :param option: Which key to get data from
+        :return: Value of the key in the given section
+
+        """
         if section is None:
             return super(ConfigHandler, self).get(self.section, option)
         else:
