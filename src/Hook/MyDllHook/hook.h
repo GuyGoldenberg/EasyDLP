@@ -55,11 +55,11 @@ private:
 	}
 	string fullRecv();
 	void getRules();
-
+	
 public:
 	Hook();
 	NetworkBase *sock;
-
+	static bool release;
 	/// <summary>
 	/// The secured create file, this function is called each time Kernel32@CreateFile is called.
 	/// This function handles the proccess of file validation and confirmation for the true create file.
@@ -98,5 +98,7 @@ public:
 
 };
 
+
+extern bool release;
 extern Hook* hook;
 #endif

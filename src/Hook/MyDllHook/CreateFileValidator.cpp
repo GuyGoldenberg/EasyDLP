@@ -2,17 +2,24 @@
 #include "CreateFileValidator.h"
 #include <fstream>
 
-
 CreateFileValidator::CreateFileValidator()
 {
 	this->fValidator = new fileValidator();
 	this->sValidator = new stringValidator();
 }
 
+extern bool release;
+
+
 
 CreateFileValidator::~CreateFileValidator()
 {
 }
+
+//void CreateFileValidator::setHookObj(Hook* pHook)
+//{
+////	this->pHook = pHook;
+//}
 
 void CreateFileValidator::setRules(string rules)
 {
@@ -77,10 +84,11 @@ int CreateFileValidator::Validate(string filePath)
 		}
 		if (!result)
 		{
-			return id;
+			this->lastIncidentId = id; // set last incident rule hit id
+			return (actionToTake == 1) ? 1 : 2 ;// 1 = block and notify, 2 = only notify; this line is to prevent errors;
 		}
 	}
-	return -1;
+	return 0; // File valid; 0 = Do nothing
 }
 
 bool CreateFileValidator::validateExtension(string filePath, Json::Value rule)
@@ -91,7 +99,8 @@ bool CreateFileValidator::validateExtension(string filePath, Json::Value rule)
 bool CreateFileValidator::validateHash(string filePath, Json::Value rule)
 {
 	fValidator->setFilePath(filePath);
-	return !this->fValidator->compareFileHash(rule["content"].asString());
+	bool res = this->fValidator->compareFileHash(rule["content"].asString());
+	return res;
 }
 
 bool CreateFileValidator::validateSimilarity(string filePath, Json::Value rule)
@@ -99,9 +108,11 @@ bool CreateFileValidator::validateSimilarity(string filePath, Json::Value rule)
 	string fileContent;
 	string temp;
 	ifstream file;
+	::release = true;
 	file.open(filePath);
 	std::string s((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	file.close();
+	::release = false;
 	float result = this->sValidator->stringSimilarity(fileContent, rule["content"].asString());
 	return result * 100 < rule["similarity"].asFloat();
 }

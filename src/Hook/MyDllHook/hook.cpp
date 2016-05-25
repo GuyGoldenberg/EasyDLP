@@ -4,14 +4,15 @@
 #include <atlstr.h>
 #include <Lmcons.h>
 #include "NetworkLib\network_lib.h"
-
+#include <thread>
 CreateFileValidator *crValidator;
 
 Hook::Hook(){
 	crValidator = new CreateFileValidator();
+//	crValidator->setHookObj(this);
 };
 
-
+bool release;
 string Hook::fullRecv()
 {
 	string data;
@@ -41,7 +42,7 @@ void Hook::getRules()
 
 void Hook::sendIncident(string data)
 {
-	this->sock->send(string("2 " + data + "\r\n").c_str());
+	this->sock->send(string("2 " + data).c_str());
 	return;
 }
 
@@ -123,49 +124,65 @@ string currentDateTime() {
 	return buf;
 }
 
-void sendIncident(string inc)
+
+string generateReport(string filePath)
 {
+
+	TCHAR szEXEPath[2048];
+	char applicationPath[2048];
+	string mes;
+	GetModuleFileName(NULL, szEXEPath, 2048);
+	int j;
+	for (j = 0; szEXEPath[j] != 0; j++)
+	{
+		applicationPath[j] = szEXEPath[j];
+	}
+	applicationPath[j] = '\0';
+
+	Json::Value incident;
+
+	incident["appTitle"] = GetActiveWindowTitle();
+	incident["appPID"] = ::getpid();
+	incident["currentUser"] = getUserName();
+	incident["incidentTime"] = currentDateTime();
+	incident["actionTaken"] = 1;
+	incident["fileTried"] = filePath;
+	incident["appPath"] = applicationPath;
+	incident["ruleId"] = crValidator->getLastIncidentId();
+	ostringstream inc;
+	inc << incident;
+	string json = inc.str();
+	return json;
+}
+
+void sendIncident(string filePath)
+{
+	string inc = generateReport(filePath);
 	::hook->sendIncident(inc);
 	return;
 }
 
-
 HGDIOBJ WINAPI Hook::SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h)
 {
+	if (::release)
+	{
+		::release = false;
+		return Hook::TrueCreateFile(lpFileName, a, b, c, d, e, h);
+	}
 
-	// Use global CreateFileValidator object
 	string filePath;
 	stringValidator fValidator;
 	filePath = Encode(lpFileName, CP_UTF8); //UTF-8 encoding
-	int id = crValidator->Validate(filePath);
-	if (id != -1)
+	int res = crValidator->Validate(filePath);
+	if (res > 0)
 	{
-		TCHAR szEXEPath[2048];
-		char applicationPath[2048];
-		string mes;
-		GetModuleFileName(NULL, szEXEPath, 2048);
-		int j;
-		for (j = 0; szEXEPath[j] != 0; j++)
+		thread t(::sendIncident, filePath);
+		t.detach();
+		if (res == 1)
 		{
-			applicationPath[j] = szEXEPath[j];
+			MessageBoxA(GetActiveWindow(), (string("This application is not allowed to access the following file:\r\n") + filePath).c_str(), "Confidential information policy violation!", 0x0 | MB_ICONSTOP | MB_TASKMODAL);
+			return INVALID_HANDLE_VALUE;
 		}
-		applicationPath[j] = '\0';
-
-		Json::Value incident;
-		incident["appTitle"] = GetActiveWindowTitle();
-		incident["appPID"] = ::getpid();
-		incident["currentUser"] = getUserName();
-		incident["incidentTime"] = currentDateTime();
-		incident["actionTaken"] = 1;
-		incident["fileTried"] = filePath;
-		incident["appPath"] = applicationPath;
-		incident["ruleId"] = id;
-		ostringstream inc;
-		inc << incident;
-		string json = inc.str();
-		::sendIncident(json);
-		//MessageBoxA(GetActiveWindow(), inc.str().c_str(), "Confidential information policy violation!", 0x0 | MB_ICONSTOP | MB_TASKMODAL);
-		return INVALID_HANDLE_VALUE;
 	}
 	
 	return Hook::TrueCreateFile(lpFileName, a, b, c, d, e, h);
@@ -178,24 +195,31 @@ void Hook::disconnectServer()
 
 bool Hook::setHook()
 {
-	this->connectToServer();
-	BOOL hookResult = Mhook_SetHook((PVOID*)&this->TrueCreateFile, (PVOID)(Hook::SecuredCreateFile));
-	if (!hookResult)
+	BOOL hookResult;
+	int count = 0, max = 3;
+	do
 	{
-		// TODO Replace the message box with the logging.
-		MessageBoxA(NULL, (LPCSTR)"Error running hook", NULL, NULL);
-	}
+		if (count == max)
+			break;
+		else
+			hookResult = Mhook_SetHook((PVOID*)&this->TrueCreateFile, (PVOID)(Hook::SecuredCreateFile));
+		++count;
+	} while ((!hookResult));
 	return hookResult;
 }
 
 bool Hook::unsetHook()
 {
-	BOOL unHookResult = Mhook_Unhook((PVOID*)&this->TrueCreateFile);
-	if (!unHookResult)
+	BOOL unHookResult;
+	int count = 0, max = 3;
+	do
 	{
-		MessageBoxA(NULL, (LPCSTR)"Cannot Unset the hook", NULL, NULL);
-	}
-	::hook->disconnectServer();
+		if (count == max)
+			break;
+		else
+			unHookResult = Mhook_Unhook((PVOID*)&this->TrueCreateFile);
+		++count;
+	} while ((!unHookResult));
 	return unHookResult;
 }
 

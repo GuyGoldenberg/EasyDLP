@@ -20,10 +20,13 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 	switch (ul_reason_for_call)
 	{
 		case DLL_PROCESS_ATTACH:
+			::hook->connectToServer();
+
 			::hook->setHook();
 			break;
 		case DLL_PROCESS_DETACH:
 			::hook->unsetHook();
+			::hook->disconnectServer();
 			break;
 	}
 	return TRUE;
