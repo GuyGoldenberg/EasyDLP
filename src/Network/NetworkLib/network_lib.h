@@ -30,6 +30,8 @@ private:
 	//void logMessages(const char *message, log_level level)
 	void logMessages(const char* message, log_level level);
 
+
+
 public:
 	typedef enum return_codes { success = 0, wsastrartup_error = 1, getaddrinfo_error, socket_create_error, connect_error, send_error, bind_error, listen_error, accept_error, nullptr_error, settimeout_error } return_code;
 	NetworkBase(void);
@@ -41,6 +43,7 @@ public:
 	const char*  getIP();
 	const char*  getPort();
 	return_code send(const char*  data);
+	return_code send(const char*  data, bool withProtocol);
 	return_code send(SOCKET clientSocket, const char* data);
 	return_code bind(const char * port);
 	return_code listen(int backlog);
@@ -49,6 +52,9 @@ public:
 	void close();
 	void shutdown(int x);
 	return_code settimeout(int timeout);
+
+private:
+	return_code realSend(const char*  data);
 
 };
 
@@ -73,7 +79,7 @@ extern "C"{
 	NETWORKLIB_API return_code net_send(NetworkBase* netBase, char* data)
 	{
 		if (netBase == nullptr) return NetworkBase::return_code::nullptr_error;
-		return netBase->send(data);
+		return netBase->send(data, false);
 	}
 
 	NETWORKLIB_API char* net_recv(NetworkBase* netBase, int buf_size)

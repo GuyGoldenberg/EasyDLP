@@ -185,7 +185,14 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::connect(const char* pServer
 NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const char* pData)
 {
 	
+	char* newMessage = strConcat(4, "{\"content-length\":", itoa(strlen(pData)), "} ",pData);
+	return (NetworkBase::return_code)this->realSend((const char*)newMessage);
 
+}
+
+NetworkBase::return_code NETWORKLIB_API NetworkBase::realSend(const char* pData)
+{
+	
 	int res = ::send(this->socket, pData, strlen(pData), 0);
 	if (res == SOCKET_ERROR) {
 		this->logMessages(strConcat("Failed to send data: errno:", itoa(WSAGetLastError())), log_level::error);
@@ -195,6 +202,18 @@ NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const char* pData)
 	}
 	return return_code::success;
 }
+
+
+NetworkBase::return_code NETWORKLIB_API NetworkBase::send(const char* pData, bool withProtocol)
+{
+	if (withProtocol)
+		return this->send(pData);
+	else
+		return this->realSend(pData);
+	
+}
+
+
 
 NetworkBase::return_code NETWORKLIB_API NetworkBase::send(SOCKET clientSocket, const char * pData)
 {
