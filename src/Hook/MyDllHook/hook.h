@@ -8,6 +8,7 @@
 #include "JsonLib\\json\\json.h"
 #include "CreateFileValidator.h"
 #include "NetworkLib\\network_lib.h"
+#include <thread>
 #pragma comment(lib, "NetworkLib\\network_lib.lib")
 #pragma comment(lib, "crypt32.lib")
 
@@ -24,36 +25,38 @@ typedef HANDLE(WINAPI* _CreateFile)(
 
 class Hook
 {
-private:
-	char * createUid()
-	{
-		DATA_BLOB DataIn;
-		DATA_BLOB DataOut;
-		DATA_BLOB DataVerify;
-		BYTE *pbDataInput = (BYTE *)"\1\1";
-		DWORD cbDataInput = strlen((char *)pbDataInput) + 1;
-		DataIn.pbData = pbDataInput;
-		DataIn.cbData = cbDataInput;
-		CRYPTPROTECT_PROMPTSTRUCT PromptStruct;
-		LPWSTR pDescrOut = NULL;
+private:	
+	typedef ::pair<int, string> network_message;
+	bool stopThreads;
 
-		ZeroMemory(&PromptStruct, sizeof(PromptStruct));
-		PromptStruct.cbSize = sizeof(PromptStruct);
-		PromptStruct.dwPromptFlags = CRYPTPROTECT_PROMPT_ON_PROTECT;
-		PromptStruct.szPrompt = L"This is a user prompt.";
+	/// <summary>
+	/// Generate a unique identifier for the computer
+	/// </summary>
+	/// <returns></returns>
+	char * createUid();
+	
+	/// <summary>
+	/// Receives an entire message from the server (If len > 1024 bytes)
+	/// </summary>
+	/// <returns>Server message</returns>
+	network_message fullRecv();
+	
+		
+	/// <summary>
+	/// Converts the server response to a network_message structure (status, info)
+	/// </summary>
+	/// <param name="response">The server response.</param>
+	/// <returns>Server message represented in a network_message pair</returns>
+	network_message splitResponse(string response);
+		
+	/// <summary>
+	/// Kills the running threads.
+	/// </summary>
+	void killThreads();
 
-		CryptProtectData(
-			&DataIn,
-			NULL,
-			NULL,
-			NULL,
-			NULL,
-			CRYPTPROTECT_LOCAL_MACHINE | CRYPTPROTECT_UI_FORBIDDEN,
-			&DataOut);
-		return (char *)DataOut.pbData;
-
-	}
-	string fullRecv();
+	/// <summary>
+	/// Asks for the rules to follow from the server
+	/// </summary>
 	void getRules();
 	
 public:
@@ -68,31 +71,45 @@ public:
 	/// <param name="lpFileName">Requested file path</param>
 	/// <returns></returns>
 	static HGDIOBJ WINAPI SecuredCreateFile(LPCTSTR lpFileName, DWORD a, DWORD b, LPSECURITY_ATTRIBUTES c, DWORD d, DWORD e, HANDLE h);
-
+	
+	/// <summary>
+	/// Connects to the server.
+	/// </summary>
 	void connectToServer();
 
+	/// <summary>
+	/// Disconnects from the server.
+	/// </summary>
 	void disconnectServer();
 
+	/// <summary>
+	/// Sends a incident to the server.
+	/// </summary>
+	/// <param name="data">Information about the incidents in JSON format</param>
 	void sendIncident(const string data);
 
-		/// <summary>
-		/// The kernel32 original create file
-		/// </summary>
-		static _CreateFile TrueCreateFile;
-//
+	/// <summary>
+	/// The kernel32 original CreateFile
+	/// </summary>
+	static _CreateFile TrueCreateFile;
 
-		/// <summary>
-		/// Sets the hook.
-		/// </summary>
-		/// <returns>Hook status (True/False)</returns>
-		bool setHook();
+	/// <summary>
+	/// Sets the hook.
+	/// </summary>
+	/// <returns>Hook status (True/False)</returns>
+	bool setHook();
 
 
-		/// <summary>
-		/// Unsets the hook.
-		/// </summary>
-		/// <returns>Un-Hook status (True/False)</returns>
-		bool unsetHook();
+	/// <summary>
+	/// Unsets the hook.
+	/// </summary>
+	/// <returns>Un-Hook status (True/False)</returns>
+	bool unsetHook();
+	
+	/// <summary>
+	/// Runs the necessary threads.
+	/// </summary>
+	void run();
 
 	
 

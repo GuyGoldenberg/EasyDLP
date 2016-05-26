@@ -4,47 +4,125 @@
 #include <atlstr.h>
 #include <Lmcons.h>
 #include "NetworkLib\network_lib.h"
-#include <thread>
+
+
 CreateFileValidator *crValidator;
+bool release; // Release the hook, Used to open file from within the hook. USE WITH CAUTION!
+
+void Hook::killThreads()
+{
+	this->stopThreads = true;
+}
 
 Hook::Hook(){
 	crValidator = new CreateFileValidator();
-//	crValidator->setHookObj(this);
+	this->connectToServer();
+	this->stopThreads = false;
+	this->run();
 };
 
-bool release;
-string Hook::fullRecv()
+
+Hook::network_message Hook::splitResponse(string response)
 {
-	string data;
+	stringstream sStream;
 	string temp;
+	int status;
+
+	sStream << response;
+	::getline(sStream, temp, ' ');
+
+	status = atoi(temp.c_str());
+	
+	::getline(sStream, temp);
+	return ::make_pair(status, temp);
+}
+
+Hook::network_message Hook::fullRecv()
+{
+	string data, temp;
+	int status;
 	while (true)
 	{
 		temp = string(this->sock->recv(1024));
 		if (temp.length() < 1024)
-			return temp;
+		{
+			return this->splitResponse(temp);
+		}
 		data += temp;
 	}
+	return this->splitResponse(data);
 
 }
+
+
+char * Hook::createUid()
+{
+	DATA_BLOB DataIn;
+	DATA_BLOB DataOut;
+	DATA_BLOB DataVerify;
+	BYTE *pbDataInput = (BYTE *)"\1\1";
+	DWORD cbDataInput = strlen((char *)pbDataInput) + 1;
+	DataIn.pbData = pbDataInput;
+	DataIn.cbData = cbDataInput;
+	CRYPTPROTECT_PROMPTSTRUCT PromptStruct;
+	LPWSTR pDescrOut = NULL;
+
+	ZeroMemory(&PromptStruct, sizeof(PromptStruct));
+	PromptStruct.cbSize = sizeof(PromptStruct);
+	PromptStruct.dwPromptFlags = CRYPTPROTECT_PROMPT_ON_PROTECT;
+	PromptStruct.szPrompt = L"This is a user prompt.";
+
+	CryptProtectData(
+		&DataIn,
+		NULL,
+		NULL,
+		NULL,
+		NULL,
+		CRYPTPROTECT_LOCAL_MACHINE | CRYPTPROTECT_UI_FORBIDDEN,
+		&DataOut);
+	return (char *)DataOut.pbData;
+
+}
+
 
 void Hook::getRules()
 {
+	
+	while (!this->stopThreads)
+	{
+	MessageBoxA(0, "Getting rules", 0, 0);
 
 	this->sock->send("5 GET RULES");
-	string rules = this->fullRecv();
-	string status;
-	istringstream rulesStream(rules);
-	getline(rulesStream, status, ' ');
-	getline(rulesStream, rules);
-	crValidator->setRules(rules);
+	network_message message = this->fullRecv();
+	int status = message.first;
+	string info = message.second;
+	MessageBoxA(0, to_string(status).c_str(), 0, 0);
+
+	// If response status is not OK.
+	if (status != 3)
+	return;
+
+	crValidator->setRules(info);
+	Sleep(2000);
+	}
+	
+	return;
+}
+
+void Hook::run()
+{
+	// TODO: Run getRules as a thread
 
 }
+
 
 void Hook::sendIncident(string data)
 {
 	this->sock->send(string("2 " + data).c_str());
 	return;
 }
+
+
 
 void Hook::connectToServer()
 {
@@ -55,9 +133,22 @@ void Hook::connectToServer()
 	this->sock->send("CLIENT HELLO");
 
 	char * response = (this->sock->recv(1024));
+	if (strcmp(response, "SERVER HELLO") != 0)
+	{
+		// TODO: Try again
+		// Cannot connect to server...
+		return;
+	}
 	this->sock->send((string("1 ") + string(md5(string(this->createUid())))).c_str());
-	this->sock->recv(1024);
-	this->getRules();
+	network_message newResponse = this->fullRecv();
+	if (newResponse.first != 3)
+	{
+		// TODO: Try again
+		// Cannot connect to server...
+		return;
+	}
+
+	return;
 }
 
 _CreateFile Hook::TrueCreateFile = (_CreateFile)GetProcAddress(GetModuleHandle(L"kernel32"), "CreateFileW");
